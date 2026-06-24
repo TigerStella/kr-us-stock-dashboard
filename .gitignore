@@ -16,5 +16,8 @@
 *.log
 dev-server.log
 
+# local tooling (배포 저장소에는 불필요)
+.claude/
+
 # env
 .env*.local
