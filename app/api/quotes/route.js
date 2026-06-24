@@ -1,5 +1,5 @@
 import { SYMBOLS } from "../../symbols";
-import { allTickers } from "../../portfolios";
+import { allYahooSymbols } from "../../portfolios";
 
 // 항상 실시간으로 가져오고 캐시하지 않음
 export const dynamic = "force-dynamic";
@@ -95,7 +95,7 @@ function symbolUnion() {
   const seen = new Set();
   const list = [];
   for (const s of SYMBOLS) if (!seen.has(s.symbol)) { seen.add(s.symbol); list.push(s.symbol); }
-  for (const t of allTickers()) if (!seen.has(t)) { seen.add(t); list.push(t); }
+  for (const t of allYahooSymbols()) if (!seen.has(t)) { seen.add(t); list.push(t); }
   return list;
 }
 

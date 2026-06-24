@@ -198,6 +198,36 @@ body {
   color: var(--amber);
 }
 
+/* ── 총 평가금액 ── */
+.grandtotal {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 10px;
+  margin: 16px 0 6px;
+  padding: 14px 16px;
+  border: 1px solid var(--border-bright);
+  background: var(--panel);
+  border-radius: 8px;
+}
+.grandtotal > span:first-child {
+  color: var(--muted);
+  font-size: 13px;
+}
+.grandtotal b {
+  font-size: 22px;
+  color: var(--accent);
+}
+.grandtotal .sub {
+  color: var(--muted);
+  font-size: 13px;
+}
+.grandtotal .sub2 {
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 12px;
+}
+
 /* ── 카드 그리드 ── */
 .grid {
   display: grid;

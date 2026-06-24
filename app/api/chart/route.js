@@ -1,7 +1,8 @@
-import { SYMBOL_MAP } from "../../symbols";
-
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
+
+// 허용 심볼 형식 (티커/지수/환율/한국코드.KS). 외부 입력 방어용 화이트리스트 패턴.
+const SYMBOL_RE = /^[A-Za-z0-9.^=-]{1,15}$/;
 
 const HOSTS = [
   "https://query1.finance.yahoo.com",
@@ -43,7 +44,7 @@ export async function GET(request) {
   const symbol = searchParams.get("symbol");
   const rangeKey = searchParams.get("range") || "1mo";
 
-  if (!symbol || !SYMBOL_MAP[symbol]) {
+  if (!symbol || !SYMBOL_RE.test(symbol)) {
     return Response.json({ ok: false, error: "알 수 없는 심볼" }, { status: 400 });
   }
   const cfg = RANGES[rangeKey] || RANGES["1mo"];
@@ -69,7 +70,6 @@ export async function GET(request) {
       {
         ok: true,
         symbol,
-        name: SYMBOL_MAP[symbol].name,
         range: rangeKey,
         currency: result?.meta?.currency ?? null,
         points,
