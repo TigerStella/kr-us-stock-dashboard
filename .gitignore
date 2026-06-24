@@ -19,5 +19,8 @@ dev-server.log
 # local tooling (배포 저장소에는 불필요)
 .claude/
 
+# 무관한 별개 프로젝트 (Vite 포트폴리오) - 이 저장소에 포함하지 않음
+/jack-portfolio/
+
 # env
 .env*.local
