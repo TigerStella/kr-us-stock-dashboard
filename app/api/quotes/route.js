@@ -1,4 +1,5 @@
 import { SYMBOLS } from "../../symbols";
+import { allTickers } from "../../portfolios";
 
 // 항상 실시간으로 가져오고 캐시하지 않음
 export const dynamic = "force-dynamic";
@@ -43,10 +44,9 @@ function downsample(arr, max) {
   return out;
 }
 
-// 현재가=meta.regularMarketPrice, 전일종가=meta.chartPreviousClose 로 등락 계산.
-async function fetchQuote(def) {
+async function fetchQuote(symbol) {
   try {
-    const json = await fetchYahoo(def.symbol);
+    const json = await fetchYahoo(symbol);
     const result = json?.chart?.result?.[0];
     const meta = result?.meta;
     const price = meta?.regularMarketPrice;
@@ -58,14 +58,11 @@ async function fetchQuote(def) {
 
     const closes = result?.indicators?.quote?.[0]?.close ?? [];
     const spark = downsample(closes, 48);
-
     const change = price - prevClose;
     const changePercent = prevClose !== 0 ? (change / prevClose) * 100 : null;
 
     return {
-      symbol: def.symbol,
-      name: def.name,
-      group: def.group,
+      symbol,
       ok: true,
       price,
       prevClose,
@@ -76,18 +73,37 @@ async function fetchQuote(def) {
       spark,
     };
   } catch (err) {
-    return {
-      symbol: def.symbol,
-      name: def.name,
-      group: def.group,
-      ok: false,
-      error: String(err?.message ?? err),
-    };
+    return { symbol, ok: false, error: String(err?.message ?? err) };
   }
 }
 
+// 동시 요청 수 제한 (Yahoo throttle 회피)
+async function mapLimit(items, limit, fn) {
+  const out = new Array(items.length);
+  let i = 0;
+  async function worker() {
+    while (i < items.length) {
+      const idx = i++;
+      out[idx] = await fn(items[idx]);
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
+  return out;
+}
+
+function symbolUnion() {
+  const seen = new Set();
+  const list = [];
+  for (const s of SYMBOLS) if (!seen.has(s.symbol)) { seen.add(s.symbol); list.push(s.symbol); }
+  for (const t of allTickers()) if (!seen.has(t)) { seen.add(t); list.push(t); }
+  return list;
+}
+
 export async function GET() {
-  const quotes = await Promise.all(SYMBOLS.map(fetchQuote));
+  const symbols = symbolUnion();
+  const results = await mapLimit(symbols, 8, fetchQuote);
+  const quotes = {};
+  for (const r of results) quotes[r.symbol] = r;
   return Response.json(
     { updatedAt: new Date().toISOString(), quotes },
     { headers: { "Cache-Control": "no-store" } }

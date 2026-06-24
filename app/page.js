@@ -1,41 +1,33 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import LineChart from "./LineChart";
 import Sparkline from "./Sparkline";
+import { SYMBOLS } from "./symbols";
+import {
+  PORTFOLIOS,
+  BROKERS,
+  BROKER_LABEL,
+  mergeByTicker,
+  mergedAll,
+} from "./portfolios";
 
 const REFRESH_MS = 30000;
-const GROUP_LABEL = {
-  index: "미국 주요 지수",
-  kr: "한국 시총 TOP 5",
-  stock: "미국 대표 종목",
-  fx: "환율",
-};
-const GROUP_ORDER = ["index", "kr", "stock", "fx"];
-const RANGE_OPTIONS = [
-  { key: "1d", label: "1일" },
-  { key: "5d", label: "5일" },
-  { key: "1mo", label: "1개월" },
-  { key: "6mo", label: "6개월" },
-  { key: "1y", label: "1년" },
-];
 
-function fmtPrice(v, group) {
-  if (typeof v !== "number") return "-";
-  if (group === "fx") return v.toLocaleString("ko-KR", { maximumFractionDigits: 2 });
-  if (group === "kr") return v.toLocaleString("ko-KR", { maximumFractionDigits: 0 });
-  return v.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
-function priceUnit(group) {
-  if (group === "kr") return "원";
-  if (group === "fx") return "";
-  return "";
-}
-function fmtSign(v, digits = 2) {
-  if (typeof v !== "number") return "-";
-  const s = v > 0 ? "+" : v < 0 ? "" : "";
-  return s + v.toLocaleString("en-US", { minimumFractionDigits: digits, maximumFractionDigits: digits });
-}
+const INDEX_DEFS = SYMBOLS.filter((s) => s.group === "index");
+const KR_DEFS = SYMBOLS.filter((s) => s.group === "kr");
+
+// ── 포맷 ──
+const usd = (v) =>
+  v == null ? "-" : "$" + v.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const krw = (v) => (v == null ? "-" : "₩" + Math.round(v).toLocaleString("ko-KR"));
+const krwNum = (v) => (v == null ? "-" : v.toLocaleString("ko-KR", { maximumFractionDigits: 0 }));
+const num2 = (v) => (v == null ? "-" : v.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+const pct = (v) => (v == null ? "-" : (v > 0 ? "+" : "") + v.toFixed(2) + "%");
+const signNum = (v, d = 2) =>
+  v == null ? "-" : (v > 0 ? "+" : "") + v.toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d });
+const shFmt = (v) => v.toLocaleString("en-US", { maximumFractionDigits: 5 });
+
 function dirClass(change) {
   if (typeof change !== "number" || change === 0) return "flat";
   return change > 0 ? "up" : "down";
@@ -44,55 +36,186 @@ function arrow(change) {
   if (typeof change !== "number" || change === 0) return "■";
   return change > 0 ? "▲" : "▼";
 }
+function fmtByCurrency(v, currency) {
+  if (v == null) return "-";
+  return currency === "KRW" ? krw(v) : usd(v);
+}
 
-function QuoteCard({ q, onClick }) {
-  if (!q.ok) {
-    return (
-      <div className="card unavailable">
-        <span className="tag">{GROUP_LABEL[q.group]}</span>
-        <div className="row1">
-          <span className="sym">{q.symbol}</span>
-        </div>
-        <div className="name">{q.name}</div>
-        <div className="nodata">
-          데이터 없음
-          {q.error ? <small>{q.error}</small> : null}
-        </div>
-      </div>
-    );
-  }
-  const dc = dirClass(q.change);
-  const chgDigits = q.group === "kr" ? 0 : 2;
+// 수량 드롭다운 옵션 (보유수량 포함)
+function qtyOptions(held) {
+  const set = new Set([1, 2, 3, 4, 5, 10, 15, 20, 30, 50, 100]);
+  if (held > 0) set.add(held);
+  return Array.from(set)
+    .filter((v) => v > 0)
+    .sort((a, b) => a - b);
+}
+
+// ── 상단 요약 바 (지수 + 환율) ──
+function SummaryBar({ quotes }) {
+  const items = [
+    ...INDEX_DEFS.map((d) => ({ sym: d.symbol, label: d.name, kind: "index" })),
+    { sym: "KRW=X", label: "원·달러", kind: "fx" },
+  ];
   return (
-    <div className="card clickable" onClick={() => onClick?.(q)}>
-      <span className="tag">{GROUP_LABEL[q.group]}</span>
-      <div className="row1">
-        <span className="sym">{q.symbol}</span>
-      </div>
-      <div className="name">{q.name}</div>
-      <div className="price">
-        {fmtPrice(q.price, q.group)}
-        {priceUnit(q.group) ? <span className="unit"> {priceUnit(q.group)}</span> : null}
-      </div>
-      <div className={`change ${dc}`}>
-        {arrow(q.change)} {fmtSign(q.change, chgDigits)}{" "}
-        {typeof q.changePercent === "number" ? `(${fmtSign(q.changePercent)}%)` : ""}
-      </div>
-      <div className="spark-wrap">
-        <Sparkline data={q.spark} positive={q.change >= 0} />
-      </div>
+    <div className="summary">
+      {items.map((it) => {
+        const q = quotes[it.sym];
+        const dc = dirClass(q?.change);
+        return (
+          <div className="sumitem" key={it.sym}>
+            <span className="sl">{it.label}</span>
+            {q?.ok ? (
+              <>
+                <span className="sv">{it.kind === "fx" ? krwNum(q.price) : num2(q.price)}</span>
+                <span className={`sc ${dc}`}>
+                  {arrow(q.change)} {pct(q.changePercent)}
+                </span>
+              </>
+            ) : (
+              <span className="sv flat">데이터 없음</span>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }
 
-function ChartModal({ quote, onClose }) {
+// ── 보유 종목 카드 (수량 드롭다운 + 매수금액) ──
+function HoldingCard({ holding, quote, fxRate, qtyVal, onQty, onOpen }) {
+  const q = quote;
+  const held = holding.shares;
+  const selectedQty = qtyVal ?? held;
+  const options = useMemo(() => qtyOptions(held), [held]);
+
+  const price = q?.ok ? q.price : null;
+  const buyUsd = price != null ? selectedQty * price : null;
+  const buyKrw = buyUsd != null && fxRate ? buyUsd * fxRate : null;
+  const dc = dirClass(q?.change);
+
+  return (
+    <div className={`card${q?.ok ? " clickable" : " unavailable"}`} onClick={() => q?.ok && onOpen(holding.ticker, holding.name, q)}>
+      <div className="card-top">
+        <div className="tk">
+          {holding.ticker}
+          {holding.uncertain ? (
+            <span className="uncert" title="보유 수량 불확실">?</span>
+          ) : null}
+          {holding.sources ? (
+            <span className="sources">
+              {holding.sources.map((s) => (
+                <span className="srcbadge" key={s}>{s}</span>
+              ))}
+            </span>
+          ) : null}
+        </div>
+        <div className="qtybox" onClick={(e) => e.stopPropagation()}>
+          <span className="qlabel">보유</span>
+          <select value={selectedQty} onChange={(e) => onQty(Number(e.target.value))}>
+            {options.map((o) => (
+              <option key={o} value={o}>
+                {shFmt(o)}주
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      <div className="name">{holding.name}</div>
+
+      {q?.ok ? (
+        <>
+          <div className="price">{usd(price)}</div>
+          <div className={`change ${dc}`}>
+            {arrow(q.change)} {signNum(q.change)} ({pct(q.changePercent)})
+          </div>
+          <div className="buy">
+            <span className="buy-q">{shFmt(selectedQty)}주 매수금액</span>
+            <span className="buy-v">
+              <b>{usd(buyUsd)}</b>
+              {buyKrw != null ? <span className="krw"> · {krw(buyKrw)}</span> : null}
+            </span>
+          </div>
+          <div className="spark-wrap">
+            <Sparkline data={q.spark} positive={q.change >= 0} />
+          </div>
+        </>
+      ) : (
+        <div className="nodata">
+          데이터 없음
+          {q?.error ? <small>{q.error}</small> : null}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── 시장 시세 카드 (보유수량 없음: 한국 종목 등) ──
+function MarketCard({ def, quote, onOpen }) {
+  const q = quote;
+  const dc = dirClass(q?.change);
+  return (
+    <div className={`card${q?.ok ? " clickable" : " unavailable"}`} onClick={() => q?.ok && onOpen(def.symbol, def.name, q)}>
+      <div className="card-top">
+        <div className="tk">{def.symbol}</div>
+      </div>
+      <div className="name">{def.name}</div>
+      {q?.ok ? (
+        <>
+          <div className="price">{fmtByCurrency(q.price, q.currency)}</div>
+          <div className={`change ${dc}`}>
+            {arrow(q.change)} {signNum(q.change)} ({pct(q.changePercent)})
+          </div>
+          <div className="spark-wrap">
+            <Sparkline data={q.spark} positive={q.change >= 0} />
+          </div>
+        </>
+      ) : (
+        <div className="nodata">
+          데이터 없음
+          {q?.error ? <small>{q.error}</small> : null}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// 보유 목록 평가금액 합계
+function Totals({ holdings, quotes, fxRate }) {
+  let usdSum = 0;
+  let any = false;
+  for (const h of holdings) {
+    const q = quotes[h.ticker];
+    if (q?.ok) {
+      usdSum += h.shares * q.price;
+      any = true;
+    }
+  }
+  if (!any) return null;
+  return (
+    <div className="totals">
+      <span>평가금액 합계</span>
+      <b>{usd(usdSum)}</b>
+      {fxRate ? <span className="krw"> · {krw(usdSum * fxRate)}</span> : null}
+    </div>
+  );
+}
+
+// ── 차트 모달 ──
+const RANGE_OPTIONS = [
+  { key: "1d", label: "1일" },
+  { key: "5d", label: "5일" },
+  { key: "1mo", label: "1개월" },
+  { key: "6mo", label: "6개월" },
+  { key: "1y", label: "1년" },
+];
+function ChartModal({ target, onClose }) {
   const [range, setRange] = useState("1mo");
   const [state, setState] = useState({ loading: true, error: null, data: null });
-
   useEffect(() => {
     let alive = true;
     setState({ loading: true, error: null, data: null });
-    fetch(`/api/chart?symbol=${encodeURIComponent(quote.symbol)}&range=${range}`)
+    fetch(`/api/chart?symbol=${encodeURIComponent(target.symbol)}&range=${range}`)
       .then(async (r) => {
         const j = await r.json();
         if (!alive) return;
@@ -103,35 +226,29 @@ function ChartModal({ quote, onClose }) {
     return () => {
       alive = false;
     };
-  }, [quote.symbol, range]);
+  }, [target.symbol, range]);
 
+  const dc = dirClass(target.change);
   return (
     <div className="overlay" onClick={onClose}>
       <div className="modal" onClick={(e) => e.stopPropagation()}>
         <div className="mhead">
           <div>
-            <div className="sym" style={{ fontSize: 12 }}>{quote.symbol}</div>
-            <div style={{ fontSize: 18, marginTop: 2 }}>{quote.name}</div>
-            <div className={`change ${dirClass(quote.change)}`} style={{ marginTop: 6 }}>
-              {fmtPrice(quote.price, quote.group)} &nbsp; {arrow(quote.change)} {fmtSign(quote.change)}{" "}
-              {typeof quote.changePercent === "number" ? `(${fmtSign(quote.changePercent)}%)` : ""}
+            <div className="sym" style={{ fontSize: 12 }}>{target.symbol}</div>
+            <div style={{ fontSize: 18, marginTop: 2 }}>{target.name}</div>
+            <div className={`change ${dc}`} style={{ marginTop: 6 }}>
+              {fmtByCurrency(target.price, target.currency)} &nbsp; {arrow(target.change)} {signNum(target.change)} ({pct(target.changePercent)})
             </div>
           </div>
           <button className="x" onClick={onClose}>닫기 ✕</button>
         </div>
-
         <div className="ranges">
           {RANGE_OPTIONS.map((r) => (
-            <button
-              key={r.key}
-              className={r.key === range ? "active" : ""}
-              onClick={() => setRange(r.key)}
-            >
+            <button key={r.key} className={r.key === range ? "active" : ""} onClick={() => setRange(r.key)}>
               {r.label}
             </button>
           ))}
         </div>
-
         {state.loading ? (
           <div className="chart-msg">차트 불러오는 중…</div>
         ) : state.error ? (
@@ -144,18 +261,27 @@ function ChartModal({ quote, onClose }) {
   );
 }
 
+const TABS = [
+  { key: "all", label: "전체" },
+  { key: "us", label: "미국" },
+  { key: "kr", label: "한국" },
+];
+
 export default function Page() {
-  const [quotes, setQuotes] = useState([]);
+  const [quotes, setQuotes] = useState({});
   const [updatedAt, setUpdatedAt] = useState(null);
-  const [status, setStatus] = useState("loading"); // loading | live | error
-  const [selected, setSelected] = useState(null);
+  const [status, setStatus] = useState("loading");
+  const [tab, setTab] = useState("all");
+  const [broker, setBroker] = useState("M");
+  const [qtyMap, setQtyMap] = useState({});
+  const [target, setTarget] = useState(null);
   const timer = useRef(null);
 
   const load = useCallback(async () => {
     try {
       const res = await fetch("/api/quotes", { cache: "no-store" });
       const json = await res.json();
-      setQuotes(json.quotes || []);
+      setQuotes(json.quotes || {});
       setUpdatedAt(json.updatedAt || new Date().toISOString());
       setStatus("live");
     } catch (e) {
@@ -169,12 +295,16 @@ export default function Page() {
     return () => clearInterval(timer.current);
   }, [load]);
 
-  const grouped = GROUP_ORDER.map((g) => ({
-    group: g,
-    items: quotes.filter((q) => q.group === g),
-  })).filter((s) => s.items.length > 0);
+  const fxRate = quotes["KRW=X"]?.ok ? quotes["KRW=X"].price : null;
+  const usMerged = useMemo(() => mergedAll(), []);
+  const brokerHoldings = useMemo(() => mergeByTicker(PORTFOLIOS[broker]), [broker]);
 
-  const okCount = quotes.filter((q) => q.ok).length;
+  const setQty = (key, v) => setQtyMap((m) => ({ ...m, [key]: v }));
+  const openChart = (symbol, name, q) =>
+    setTarget({ symbol, name, price: q.price, change: q.change, changePercent: q.changePercent, currency: q.currency });
+
+  const okCount = Object.values(quotes).filter((q) => q?.ok).length;
+  const totalCount = Object.keys(quotes).length;
 
   return (
     <div className="wrap">
@@ -186,45 +316,102 @@ export default function Page() {
         <span className="meta">
           <span className={`status-dot ${status}`} />
           {status === "loading" && "불러오는 중…"}
-          {status === "live" && `실시간 · ${okCount}/${quotes.length} 수신`}
-          {status === "error" && "갱신 실패 (다음 주기에 재시도)"}
+          {status === "live" && `실시간 · ${okCount}/${totalCount} 수신`}
+          {status === "error" && "갱신 실패 (다음 주기 재시도)"}
         </span>
         <span className="meta">
           마지막 갱신:{" "}
           {updatedAt
-            ? new Date(updatedAt).toLocaleTimeString("ko-KR", { hour12: false }) +
-              " (" +
-              new Date(updatedAt).toLocaleDateString("ko-KR") +
-              ")"
+            ? new Date(updatedAt).toLocaleTimeString("ko-KR", { hour12: false })
             : "-"}
         </span>
-        <span className="meta">· 30초마다 자동 갱신</span>
+        <span className="meta">· 30초 자동 갱신</span>
       </div>
 
-      {grouped.length === 0 ? (
-        <div className="chart-msg" style={{ height: 200 }}>
-          {status === "error" ? "데이터를 불러오지 못했습니다" : "불러오는 중…"}
-        </div>
-      ) : (
-        grouped.map((sec) => (
-          <section key={sec.group}>
-            <div className="section-title">{GROUP_LABEL[sec.group]}</div>
-            <div className="grid">
-              {sec.items.map((q) => (
-                <QuoteCard key={q.symbol} q={q} onClick={setSelected} />
-              ))}
-            </div>
-          </section>
-        ))
+      <SummaryBar quotes={quotes} />
+
+      <div className="tabs">
+        {TABS.map((t) => (
+          <button key={t.key} className={t.key === tab ? "active" : ""} onClick={() => setTab(t.key)}>
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {tab === "all" && (
+        <>
+          <div className="section-title">미국 주식 · 보유 합산 (동일 종목 통합)</div>
+          <Totals holdings={usMerged} quotes={quotes} fxRate={fxRate} />
+          <div className="grid">
+            {usMerged.map((h) => (
+              <HoldingCard
+                key={h.ticker}
+                holding={h}
+                quote={quotes[h.ticker]}
+                fxRate={fxRate}
+                qtyVal={qtyMap[`all:${h.ticker}`]}
+                onQty={(v) => setQty(`all:${h.ticker}`, v)}
+                onOpen={openChart}
+              />
+            ))}
+          </div>
+
+          <div className="section-title">한국 주식 · 시총 TOP 5</div>
+          <div className="grid">
+            {KR_DEFS.map((d) => (
+              <MarketCard key={d.symbol} def={d} quote={quotes[d.symbol]} onOpen={openChart} />
+            ))}
+          </div>
+        </>
+      )}
+
+      {tab === "us" && (
+        <>
+          <div className="subtabs">
+            {BROKERS.map((b) => (
+              <button key={b} className={b === broker ? "active" : ""} onClick={() => setBroker(b)}>
+                {BROKER_LABEL[b]}
+              </button>
+            ))}
+          </div>
+          <Totals holdings={brokerHoldings} quotes={quotes} fxRate={fxRate} />
+          <div className="grid">
+            {brokerHoldings.map((h) => (
+              <HoldingCard
+                key={h.ticker}
+                holding={h}
+                quote={quotes[h.ticker]}
+                fxRate={fxRate}
+                qtyVal={qtyMap[`${broker}:${h.ticker}`]}
+                onQty={(v) => setQty(`${broker}:${h.ticker}`, v)}
+                onOpen={openChart}
+              />
+            ))}
+          </div>
+        </>
+      )}
+
+      {tab === "kr" && (
+        <>
+          <div className="section-title">한국 주식 · 시총 TOP 5</div>
+          <div className="grid">
+            {KR_DEFS.map((d) => (
+              <MarketCard key={d.symbol} def={d} quote={quotes[d.symbol]} onOpen={openChart} />
+            ))}
+          </div>
+          <div className="footer-note">
+            한국 주식은 현재 보유 수량 데이터가 없어 시세만 표시합니다. 보유 내역(JSON)을 주시면 미국 탭과 동일하게 수량·매수금액을 추가합니다.
+          </div>
+        </>
       )}
 
       <div className="footer-note">
-        데이터: Yahoo Finance 공개 엔드포인트 (API 키 불필요) · 가격은 거래소 사정에 따라 지연될 수 있습니다.
+        데이터: Yahoo Finance 공개 엔드포인트 (API 키 불필요) · 가격 라이브, 보유 수량은 입력 데이터 기준 · 매수금액 = 선택 수량 × 현재가.
         <br />
-        가짜 데이터 없음 — 받아오지 못한 항목은 "데이터 없음"으로 표시됩니다. 카드를 클릭하면 가격 추이 차트가 열립니다.
+        받아오지 못한 항목은 "데이터 없음"으로 표시됩니다. 카드를 클릭하면 가격 추이 차트가 열립니다. (₩ 환산은 실시간 원·달러 환율 적용)
       </div>
 
-      {selected ? <ChartModal quote={selected} onClose={() => setSelected(null)} /> : null}
+      {target ? <ChartModal target={target} onClose={() => setTarget(null)} /> : null}
     </div>
   );
 }
