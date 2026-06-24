@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm -v)",
+      "Bash(curl -s -A \"Mozilla/5.0\" \"https://query1.finance.yahoo.com/v8/finance/chart/AAPL?range=1d&interval=5m\")",
+      "Bash(node -e \"let d='';process.stdin.on\\('data',c=>d+=c\\).on\\('end',\\(\\)=>{try{const j=JSON.parse\\(d\\);const m=j.chart.result[0].meta;console.log\\('OK price=',m.regularMarketPrice,'prevClose=',m.chartPreviousClose,'currency=',m.currency,'tz=',m.exchangeTimezoneName\\);}catch\\(e\\){console.log\\('PARSE FAIL', d.slice\\(0,300\\)\\);}}\\)\")",
+      "PowerShell(node -v)",
+      "PowerShell(npm -v)",
+      "mcp__Claude_Preview__preview_start"
+    ]
+  }
+}
