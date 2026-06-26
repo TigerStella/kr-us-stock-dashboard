@@ -19,8 +19,13 @@ dev-server.log
 # local tooling (배포 저장소에는 불필요)
 .claude/
 
-# 무관한 별개 프로젝트 (Vite 포트폴리오) - 이 저장소에 포함하지 않음
+# 무관한 별개 프로젝트/스크래치 - 이 저장소(주식 대시보드)에 포함하지 않음
 /jack-portfolio/
+/meta-ads-dashboard/
+/da-content-studio/
+/review-output/
+/_xlsx_work/
+/_serve_html.cjs
 
 # env
 .env*.local

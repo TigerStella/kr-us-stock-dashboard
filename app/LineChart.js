@@ -32,6 +32,15 @@ export default function LineChart({ points, currency }) {
   const rising = last >= first;
   const stroke = rising ? "var(--up)" : "var(--down)";
 
+  // 50일 이동평균선 (값이 있는 구간만)
+  const maPts = points
+    .map((p, i) => ({ i, m: p.m }))
+    .filter((p) => typeof p.m === "number" && Number.isFinite(p.m));
+  const maLine =
+    maPts.length >= 2
+      ? maPts.map((p, k) => `${k === 0 ? "M" : "L"}${x(p.i).toFixed(1)},${y(p.m).toFixed(1)}`).join(" ")
+      : null;
+
   // y축 눈금 5단계
   const ticks = [0, 0.25, 0.5, 0.75, 1].map((f) => min + f * span);
   const fmt = (v) =>
@@ -58,7 +67,15 @@ export default function LineChart({ points, currency }) {
       </defs>
       <path d={area} fill="url(#fill)" />
       <path d={line} fill="none" stroke={stroke} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
+      {maLine ? (
+        <path d={maLine} fill="none" stroke="#ff2d2d" strokeWidth="4" strokeLinejoin="round" strokeLinecap="round" />
+      ) : null}
       <circle cx={x(points.length - 1)} cy={y(last)} r="3.5" fill={stroke} />
+      {maLine ? (
+        <text x={PAD.left + 4} y={PAD.top + 8} fontSize="11" fill="#ff2d2d" fontWeight="700">
+          ━ MA50
+        </text>
+      ) : null}
       {currency ? (
         <text x={W - PAD.right} y={PAD.top - 2} textAnchor="end" fontSize="11" fill="var(--muted)">
           {currency}

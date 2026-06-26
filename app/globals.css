@@ -392,6 +392,107 @@ body {
   cursor: pointer;
   max-width: 92px;
 }
+.qtybox .qtyinput {
+  font: inherit;
+  font-size: 11px;
+  color: var(--text);
+  background: var(--panel-2);
+  border: 1px solid var(--accent);
+  border-radius: 5px;
+  padding: 2px 4px;
+  width: 72px;
+}
+
+/* ── 시뮬레이션 탭 ── */
+.sim {
+  max-width: 560px;
+  margin-top: 16px;
+}
+.sim-result {
+  border: 1px solid var(--border-bright);
+  background: var(--panel);
+  border-radius: 10px;
+  padding: 18px 20px;
+  margin-bottom: 18px;
+}
+.sim-result-label {
+  color: var(--muted);
+  font-size: 13px;
+}
+.sim-result-val {
+  font-size: 30px;
+  font-weight: 700;
+  margin-top: 4px;
+}
+.sim-result-val b {
+  color: var(--accent);
+}
+.sim-result-val .krw {
+  color: var(--amber);
+  font-size: 20px;
+  font-weight: 700;
+}
+.sim-result-val.flat {
+  color: var(--muted);
+  font-size: 18px;
+}
+.sim-result-sub {
+  color: var(--muted);
+  font-size: 12.5px;
+  margin-top: 6px;
+}
+.sim-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 12px 0;
+}
+.sim-row > label {
+  width: 56px;
+  color: var(--muted);
+  font-size: 13px;
+}
+.sim-toggle {
+  display: flex;
+  gap: 6px;
+}
+.sim-toggle button {
+  font: inherit;
+  font-size: 13px;
+  color: var(--muted);
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  padding: 7px 18px;
+  cursor: pointer;
+}
+.sim-toggle button.active {
+  color: var(--bg);
+  background: var(--accent);
+  border-color: var(--accent);
+  font-weight: 700;
+}
+.sim-row select,
+.sim-row input {
+  font: inherit;
+  font-size: 14px;
+  color: var(--text);
+  background: var(--panel-2);
+  border: 1px solid var(--border-bright);
+  border-radius: 7px;
+  padding: 8px 10px;
+}
+.sim-row select {
+  flex: 1;
+  min-width: 0;
+}
+.sim-row input {
+  width: 140px;
+}
+.sim-unit {
+  color: var(--muted);
+  font-size: 12px;
+}
 
 /* ── 매수금액 라인 ── */
 .buy {

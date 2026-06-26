@@ -5,7 +5,9 @@ export const SYMBOLS = [
   { symbol: "^IXIC", name: "나스닥", group: "index" },
   { symbol: "^DJI", name: "다우", group: "index" },
   { symbol: "^KS11", name: "코스피", group: "index" },
-  { symbol: "KRW=X", name: "원·달러", group: "fx" },
+  { symbol: "KRW=X", name: "달러/원", group: "fx" },
+  { symbol: "GBPKRW=X", name: "파운드/원", group: "fx" },
+  { symbol: "EURKRW=X", name: "유로/원", group: "fx" },
 ];
 
 export const SYMBOL_MAP = Object.fromEntries(SYMBOLS.map((s) => [s.symbol, s]));
