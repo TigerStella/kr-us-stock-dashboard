@@ -68,11 +68,11 @@ export default function LineChart({ points, currency }) {
       <path d={area} fill="url(#fill)" />
       <path d={line} fill="none" stroke={stroke} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
       {maLine ? (
-        <path d={maLine} fill="none" stroke="#ff2d2d" strokeWidth="4" strokeLinejoin="round" strokeLinecap="round" />
+        <path d={maLine} fill="none" stroke="#c14a63" strokeWidth="4" strokeLinejoin="round" strokeLinecap="round" />
       ) : null}
       <circle cx={x(points.length - 1)} cy={y(last)} r="3.5" fill={stroke} />
       {maLine ? (
-        <text x={PAD.left + 4} y={PAD.top + 8} fontSize="11" fill="#ff2d2d" fontWeight="700">
+        <text x={PAD.left + 4} y={PAD.top + 8} fontSize="11" fill="#c14a63" fontWeight="700">
           ━ MA50
         </text>
       ) : null}

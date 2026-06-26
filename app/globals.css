@@ -1,16 +1,17 @@
 :root {
-  --bg: #07090c;
-  --panel: #0d1117;
-  --panel-2: #11161d;
-  --border: #1e2630;
-  --border-bright: #2b3947;
-  --text: #c9d1d9;
-  --muted: #6e7681;
-  --accent: #39d353;
-  --up: #3fb950;
-  --down: #f85149;
-  --flat: #8b949e;
-  --amber: #e3b341;
+  /* 파스텔 팔레트: 크림 · 블러시 · 로즈 · 세이지 */
+  --bg: #f4eeea;          /* 크림 배경 */
+  --panel: #fdf9f7;       /* 카드 (배경보다 밝게) */
+  --panel-2: #f8edef;     /* 모달/입력 (블러시) */
+  --border: #ecd8d8;      /* 소프트 핑크-그레이 */
+  --border-bright: #e2b3bd; /* 로즈 */
+  --text: #4d4044;        /* 따뜻한 플럼-그레이 */
+  --muted: #9c8c90;       /* 뮤트 모브 */
+  --accent: #7e9b67;      /* 세이지 그린 */
+  --up: #5f8f57;          /* 상승: 그린 */
+  --down: #d76a84;        /* 하락: 로즈-레드 */
+  --flat: #9c8c90;
+  --amber: #c0845a;       /* ₩ 보조: 따뜻한 테라코타 */
   font-family: ui-monospace, SFMono-Regular, "Cascadia Code", "Consolas",
     "D2Coding", "Noto Sans KR", monospace;
 }
@@ -31,7 +32,7 @@ body {
 body {
   background-image: radial-gradient(
     circle at 1px 1px,
-    rgba(255, 255, 255, 0.025) 1px,
+    rgba(120, 85, 90, 0.04) 1px,
     transparent 0
   );
   background-size: 22px 22px;
@@ -209,6 +210,7 @@ body {
   border: 1px solid var(--border-bright);
   background: var(--panel);
   border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(120, 85, 90, 0.07);
 }
 .grandtotal > span:first-child {
   color: var(--muted);
@@ -241,13 +243,15 @@ body {
   background: var(--panel);
   border-radius: 8px;
   padding: 14px 15px;
-  transition: border-color 0.15s, transform 0.05s;
+  box-shadow: 0 1px 3px rgba(120, 85, 90, 0.06);
+  transition: border-color 0.15s, transform 0.05s, box-shadow 0.15s;
 }
 .card.clickable {
   cursor: pointer;
 }
 .card.clickable:hover {
   border-color: var(--border-bright);
+  box-shadow: 0 3px 10px rgba(120, 85, 90, 0.12);
 }
 .card.clickable:active {
   transform: translateY(1px);
@@ -522,7 +526,7 @@ body {
 .overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.6);
+  background: rgba(77, 64, 68, 0.38);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -535,6 +539,7 @@ body {
   border: 1px solid var(--border-bright);
   border-radius: 10px;
   padding: 18px 20px 22px;
+  box-shadow: 0 12px 40px rgba(120, 85, 90, 0.22);
 }
 .modal .mhead {
   display: flex;
