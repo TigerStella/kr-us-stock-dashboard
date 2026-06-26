@@ -68,6 +68,8 @@ async function fetchQuote(symbol) {
       prevClose,
       change,
       changePercent,
+      fiftyTwoWeekHigh: typeof meta?.fiftyTwoWeekHigh === "number" ? meta.fiftyTwoWeekHigh : null,
+      name: meta?.longName || meta?.shortName || null,
       currency: meta?.currency ?? null,
       marketState: meta?.marketState ?? null,
       spark,
@@ -91,16 +93,19 @@ async function mapLimit(items, limit, fn) {
   return out;
 }
 
-function symbolUnion() {
+function symbolUnion(extra = []) {
   const seen = new Set();
   const list = [];
   for (const s of SYMBOLS) if (!seen.has(s.symbol)) { seen.add(s.symbol); list.push(s.symbol); }
   for (const t of allYahooSymbols()) if (!seen.has(t)) { seen.add(t); list.push(t); }
+  for (const t of extra) if (t && !seen.has(t)) { seen.add(t); list.push(t); }
   return list;
 }
 
-export async function GET() {
-  const symbols = symbolUnion();
+export async function GET(request) {
+  const raw = new URL(request.url).searchParams.get("extra");
+  const extra = raw ? raw.split(",").map((s) => s.trim()).filter(Boolean) : [];
+  const symbols = symbolUnion(extra);
   const results = await mapLimit(symbols, 8, fetchQuote);
   const quotes = {};
   for (const r of results) quotes[r.symbol] = r;
