@@ -9,28 +9,16 @@ const HOSTS = [
   "https://query2.finance.yahoo.com",
 ];
 
-// 허용 범위 -> Yahoo range/interval 매핑. (daily=일봉이면 MA50 산출)
+// 허용 범위 -> Yahoo range/interval 매핑. daily=일봉(파생지표 계산용).
+// 파생지표(MA/BB/RSI)는 클라이언트에서 OHLC로 계산하므로 서버는 OHLC만 반환.
 const RANGES = {
   "1d": { range: "1d", interval: "5m", daily: false },
   "5d": { range: "5d", interval: "30m", daily: false },
   "1mo": { range: "1mo", interval: "1d", daily: true },
   "6mo": { range: "6mo", interval: "1d", daily: true },
   "1y": { range: "1y", interval: "1d", daily: true },
+  "2y": { range: "2y", interval: "1d", daily: true },
 };
-
-const MA_PERIOD = 50;
-
-// 일별 종가 배열로 50일 단순이동평균. 데이터 부족 구간(앞 49개)은 null.
-function sma(values, period) {
-  const out = new Array(values.length).fill(null);
-  let sum = 0;
-  for (let i = 0; i < values.length; i++) {
-    sum += values[i];
-    if (i >= period) sum -= values[i - period];
-    if (i >= period - 1) out[i] = sum / period;
-  }
-  return out;
-}
 
 async function fetchYahoo(symbol, cfg) {
   const path = `/v8/finance/chart/${encodeURIComponent(symbol)}?range=${cfg.range}&interval=${cfg.interval}`;
@@ -67,32 +55,34 @@ export async function GET(request) {
     const json = await fetchYahoo(symbol, cfg);
     const result = json?.chart?.result?.[0];
     const timestamps = result?.timestamp ?? [];
-    const closes = result?.indicators?.quote?.[0]?.close ?? [];
+    const q = result?.indicators?.quote?.[0] ?? {};
+    const opens = q.open ?? [];
+    const highs = q.high ?? [];
+    const lows = q.low ?? [];
+    const closes = q.close ?? [];
 
-    // null 값(휴장 구간) 정리: timestamp와 close가 모두 유효한 점만 남김
+    // OHLC 모두 유효한 점만 남김 (휴장/결측 구간 제거)
+    const num = (v) => (typeof v === "number" && Number.isFinite(v) ? v : null);
     const points = [];
     for (let i = 0; i < timestamps.length; i++) {
-      const c = closes[i];
-      if (typeof c === "number" && Number.isFinite(c)) {
-        points.push({ t: timestamps[i], c });
-      }
+      const c = num(closes[i]);
+      if (c == null) continue;
+      // open/high/low 결측 시 close 로 보정 (캔들 렌더 안정성)
+      const o = num(opens[i]) ?? c;
+      const h = num(highs[i]) ?? Math.max(o, c);
+      const l = num(lows[i]) ?? Math.min(o, c);
+      points.push({ t: timestamps[i], o, h, l, c });
     }
 
     if (points.length === 0) throw new Error("차트 데이터 없음");
-
-    // 일봉 범위면 50일 이동평균(MA50)을 각 점에 부착 (m: 값 또는 null)
-    if (cfg.daily) {
-      const ma = sma(points.map((p) => p.c), MA_PERIOD);
-      for (let i = 0; i < points.length; i++) points[i].m = ma[i];
-    }
 
     return Response.json(
       {
         ok: true,
         symbol,
         range: rangeKey,
+        daily: cfg.daily,
         currency: result?.meta?.currency ?? null,
-        maPeriod: cfg.daily ? MA_PERIOD : null,
         points,
       },
       { headers: { "Cache-Control": "no-store" } }

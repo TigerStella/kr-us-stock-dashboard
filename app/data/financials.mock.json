@@ -1,0 +1,111 @@
+{
+  "_comment": "Mock 손익계산서(연간). revenue 단위는 unit 필드 참조. 추후 실제 데이터 소스로 교체. opMargin/netMargin = %",
+  "NVDA": {
+    "unit": "억달러",
+    "annual": [
+      { "period": "2022/12", "revenue": 269, "opMargin": 37.3, "netMargin": 36.2 },
+      { "period": "2023/12", "revenue": 609, "opMargin": 54.1, "netMargin": 48.9 },
+      { "period": "2024/12", "revenue": 1305, "opMargin": 62.4, "netMargin": 55.8 },
+      { "period": "2025/12", "revenue": 1842, "opMargin": 63.1, "netMargin": 56.0 }
+    ]
+  },
+  "AAPL": {
+    "unit": "억달러",
+    "annual": [
+      { "period": "2022/12", "revenue": 3943, "opMargin": 30.3, "netMargin": 25.3 },
+      { "period": "2023/12", "revenue": 3833, "opMargin": 29.8, "netMargin": 25.3 },
+      { "period": "2024/12", "revenue": 3910, "opMargin": 31.5, "netMargin": 23.9 },
+      { "period": "2025/12", "revenue": 4087, "opMargin": 32.0, "netMargin": 26.1 }
+    ]
+  },
+  "GOOGL": {
+    "unit": "억달러",
+    "annual": [
+      { "period": "2022/12", "revenue": 2828, "opMargin": 26.5, "netMargin": 21.2 },
+      { "period": "2023/12", "revenue": 3074, "opMargin": 27.4, "netMargin": 24.0 },
+      { "period": "2024/12", "revenue": 3500, "opMargin": 32.1, "netMargin": 28.6 },
+      { "period": "2025/12", "revenue": 3905, "opMargin": 33.0, "netMargin": 29.1 }
+    ]
+  },
+  "MSFT": {
+    "unit": "억달러",
+    "annual": [
+      { "period": "2022/12", "revenue": 1983, "opMargin": 42.1, "netMargin": 36.7 },
+      { "period": "2023/12", "revenue": 2119, "opMargin": 41.8, "netMargin": 34.1 },
+      { "period": "2024/12", "revenue": 2451, "opMargin": 44.6, "netMargin": 35.9 },
+      { "period": "2025/12", "revenue": 2810, "opMargin": 45.2, "netMargin": 36.4 }
+    ]
+  },
+  "META": {
+    "unit": "억달러",
+    "annual": [
+      { "period": "2022/12", "revenue": 1166, "opMargin": 24.8, "netMargin": 19.9 },
+      { "period": "2023/12", "revenue": 1349, "opMargin": 34.7, "netMargin": 28.9 },
+      { "period": "2024/12", "revenue": 1645, "opMargin": 42.2, "netMargin": 37.9 },
+      { "period": "2025/12", "revenue": 1880, "opMargin": 43.0, "netMargin": 38.1 }
+    ]
+  },
+  "TSLA": {
+    "unit": "억달러",
+    "annual": [
+      { "period": "2022/12", "revenue": 815, "opMargin": 16.8, "netMargin": 15.4 },
+      { "period": "2023/12", "revenue": 967, "opMargin": 9.2, "netMargin": 15.5 },
+      { "period": "2024/12", "revenue": 976, "opMargin": 7.2, "netMargin": 7.3 },
+      { "period": "2025/12", "revenue": 1010, "opMargin": 6.4, "netMargin": 6.8 }
+    ]
+  },
+  "PLTR": {
+    "unit": "억달러",
+    "annual": [
+      { "period": "2022/12", "revenue": 19, "opMargin": -8.9, "netMargin": -19.6 },
+      { "period": "2023/12", "revenue": 22, "opMargin": 5.4, "netMargin": 9.4 },
+      { "period": "2024/12", "revenue": 28, "opMargin": 10.8, "netMargin": 16.1 },
+      { "period": "2025/12", "revenue": 37, "opMargin": 16.2, "netMargin": 20.3 }
+    ]
+  },
+  "005930": {
+    "unit": "억원",
+    "annual": [
+      { "period": "2022/12", "revenue": 3022314, "opMargin": 14.4, "netMargin": 18.4 },
+      { "period": "2023/12", "revenue": 2589355, "opMargin": 2.5, "netMargin": 6.0 },
+      { "period": "2024/12", "revenue": 3008700, "opMargin": 10.9, "netMargin": 11.8 },
+      { "period": "2025/12", "revenue": 3210000, "opMargin": 13.2, "netMargin": 13.5 }
+    ]
+  },
+  "005935": {
+    "unit": "억원",
+    "annual": [
+      { "period": "2022/12", "revenue": 3022314, "opMargin": 14.4, "netMargin": 18.4 },
+      { "period": "2023/12", "revenue": 2589355, "opMargin": 2.5, "netMargin": 6.0 },
+      { "period": "2024/12", "revenue": 3008700, "opMargin": 10.9, "netMargin": 11.8 },
+      { "period": "2025/12", "revenue": 3210000, "opMargin": 13.2, "netMargin": 13.5 }
+    ]
+  },
+  "000660": {
+    "unit": "억원",
+    "annual": [
+      { "period": "2022/12", "revenue": 446216, "opMargin": 15.0, "netMargin": 5.6 },
+      { "period": "2023/12", "revenue": 327657, "opMargin": -23.9, "netMargin": -28.0 },
+      { "period": "2024/12", "revenue": 661930, "opMargin": 35.0, "netMargin": 29.6 },
+      { "period": "2025/12", "revenue": 780000, "opMargin": 40.1, "netMargin": 33.2 }
+    ]
+  },
+  "010140": {
+    "unit": "억원",
+    "annual": [
+      { "period": "2022/12", "revenue": 59447, "opMargin": -14.1, "netMargin": -15.2 },
+      { "period": "2023/12", "revenue": 80094, "opMargin": 2.5, "netMargin": 4.2 },
+      { "period": "2024/12", "revenue": 97185, "opMargin": 4.6, "netMargin": 4.8 },
+      { "period": "2025/12", "revenue": 112000, "opMargin": 7.2, "netMargin": 6.9 }
+    ]
+  },
+  "042660": {
+    "unit": "억원",
+    "annual": [
+      { "period": "2022/12", "revenue": 46070, "opMargin": -34.0, "netMargin": -35.5 },
+      { "period": "2023/12", "revenue": 72484, "opMargin": 2.2, "netMargin": -2.4 },
+      { "period": "2024/12", "revenue": 100141, "opMargin": 5.8, "netMargin": 3.1 },
+      { "period": "2025/12", "revenue": 121000, "opMargin": 8.4, "netMargin": 6.2 }
+    ]
+  }
+}
