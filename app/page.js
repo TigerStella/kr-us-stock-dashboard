@@ -13,6 +13,7 @@ import InlineChartPanel from "./components/InlineChartPanel";
 import SimulationPanel from "./components/SimulationPanel";
 import DrawdownPanel from "./components/DrawdownPanel";
 import DividendChart from "./components/DividendChart";
+import { fetchDividendMap } from "./lib/financials";
 import {
   usd,
   krw,
@@ -385,6 +386,21 @@ export default function Page() {
 
   const simOptions = useMemo(() => ({ us: usAll, kr: krAll }), [usAll, krAll]);
 
+  // 배당 실데이터 (Yahoo) — 보유 종목이 바뀔 때만 조회
+  const [dividendMap, setDividendMap] = useState({});
+  const dividendKey = useMemo(
+    () => allHoldings.map((h) => h.yahoo).sort().join(","),
+    [allHoldings]
+  );
+  useEffect(() => {
+    let alive = true;
+    const syms = allHoldings.map((h) => h.yahoo);
+    if (!syms.length) return;
+    fetchDividendMap(syms).then((m) => alive && setDividendMap(m)).catch(() => {});
+    return () => { alive = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dividendKey]);
+
   const setQty = (key, v) => setQtyMap((m) => ({ ...m, [key]: v }));
 
   // 인라인 차트에서 보여줄 선택 종목 (yahoo 심볼 기준으로 보유목록에서 해석)
@@ -547,13 +563,14 @@ export default function Page() {
               options={simOptions}
               quotes={quotes}
               fxRate={fxRate}
+              dividends={dividendMap}
               addItem={addSimItem}
               updateItem={updateSimItem}
               removeItem={removeSimItem}
             />
           )}
 
-          <DividendChart holdings={allHoldings} fxRate={fxRate} />
+          <DividendChart holdings={allHoldings} fxRate={fxRate} dividends={dividendMap} />
 
           <div className="footer-note">
             데이터: Yahoo Finance 공개 엔드포인트 (API 키 불필요) · 가격 라이브, 보유 수량은 입력 데이터 기준 · 평가금액 = 선택 수량 × 현재가.

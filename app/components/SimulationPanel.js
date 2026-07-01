@@ -1,7 +1,6 @@
 "use client";
 
 import { yahooSymbol } from "../portfolios";
-import { getDividendSync } from "../lib/financials";
 import { usd, krw, pct, signNum, shFmt, dirClass, arrow } from "../lib/format";
 
 const fmtMonths = (months) => months.slice().sort((a, b) => a - b).map((m) => `${m}월`).join(", ");
@@ -40,14 +39,14 @@ function SummaryCard({ kind, label, valueKrw, valueNative, nativeCcy, dayKrw, pr
   );
 }
 
-function SimRow({ it, options, quotes, fxRate, onChange, onRemove }) {
+function SimRow({ it, options, quotes, fxRate, dividends, onChange, onRemove }) {
   const { sel, q, value, dayChange } = calcItem(it, options, quotes);
   const isKR = it.market === "kr";
   const stocks = options[it.market] || [];
   const dc = dirClass(q?.change);
 
-  // 배당: 주당 배당 × 수량 (연간), 배당월
-  const div = sel ? getDividendSync(sel.ticker) : null;
+  // 배당: 주당 배당 × 수량 (연간, 실데이터), 배당월
+  const div = sel ? dividends[yahooSymbol(it.market, sel.ticker)] : null;
   const divAnnual = div ? it.qty * div.perShare : null;
   const divKrw = divAnnual != null ? (isKR ? divAnnual : (fxRate ? divAnnual * fxRate : null)) : null;
 
@@ -113,7 +112,7 @@ function SimRow({ it, options, quotes, fxRate, onChange, onRemove }) {
   );
 }
 
-export default function SimulationPanel({ items, options, quotes, fxRate, addItem, updateItem, removeItem }) {
+export default function SimulationPanel({ items, options, quotes, fxRate, dividends = {}, addItem, updateItem, removeItem }) {
   // 시장별 집계
   let usVal = 0, usDay = 0, usAny = false; // USD
   let krVal = 0, krDay = 0, krAny = false; // KRW
@@ -168,6 +167,7 @@ export default function SimulationPanel({ items, options, quotes, fxRate, addIte
               options={options}
               quotes={quotes}
               fxRate={fxRate}
+              dividends={dividends}
               onChange={(patch) => updateItem(it.id, patch)}
               onRemove={() => removeItem(it.id)}
             />

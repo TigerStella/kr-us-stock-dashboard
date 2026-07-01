@@ -11,20 +11,19 @@ import {
   ResponsiveContainer,
   Cell,
 } from "recharts";
-import { getDividendSync } from "../lib/financials";
 import { krw } from "../lib/format";
 
 const MONTHS = ["1월","2월","3월","4월","5월","6월","7월","8월","9월","10월","11월","12월"];
 const compactKrw = (v) =>
   v == null ? "-" : Math.abs(v) >= 10000 ? "₩" + (v / 10000).toFixed(0) + "만" : "₩" + Math.round(v).toLocaleString("ko-KR");
 
-// 보유 수량 기준 월별 배당(₩ 환산) 합산
-function computeMonthly(holdings, fxRate) {
+// 보유 수량 기준 월별 배당(₩ 환산) 합산. dividends: { [yahoo]: {perShare, months, currency} }
+function computeMonthly(holdings, fxRate, dividends) {
   const monthly = new Array(12).fill(0);
   let total = 0;
   let covered = 0;
   for (const h of holdings) {
-    const d = getDividendSync(h.ticker);
+    const d = dividends[h.yahoo];
     if (!d || !h.shares) continue;
     const annualNative = h.shares * d.perShare;
     const krwAnnual = h.market === "kr" ? annualNative : (fxRate ? annualNative * fxRate : 0);
@@ -39,8 +38,11 @@ function computeMonthly(holdings, fxRate) {
   return { data: MONTHS.map((label, i) => ({ month: label, amount: Math.round(monthly[i]) })), total, covered };
 }
 
-export default function DividendChart({ holdings, fxRate }) {
-  const { data, total, covered } = useMemo(() => computeMonthly(holdings, fxRate), [holdings, fxRate]);
+export default function DividendChart({ holdings, fxRate, dividends = {} }) {
+  const { data, total, covered } = useMemo(
+    () => computeMonthly(holdings, fxRate, dividends),
+    [holdings, fxRate, dividends]
+  );
   const hasData = total > 0;
 
   return (
@@ -50,7 +52,7 @@ export default function DividendChart({ holdings, fxRate }) {
         <span className="div-total">연간 합계 <b>{hasData ? krw(total) : "-"}</b></span>
       </div>
       <div className="div-sub">
-        배당 데이터가 있는 보유종목 {covered}개를 지급월에 균등 분배해 ₩로 환산·합산했습니다. (mock 데이터, 추후 실제 소스 교체)
+        최근 1년 실제 배당 이력(Yahoo)이 있는 보유종목 {covered}개를 지급월에 배분해 ₩로 환산·합산했습니다.
       </div>
       {!hasData ? (
         <div className="chart-msg">배당 데이터 없음</div>
