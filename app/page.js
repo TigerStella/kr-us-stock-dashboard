@@ -13,6 +13,7 @@ import InlineChartPanel from "./components/InlineChartPanel";
 import SimulationPanel from "./components/SimulationPanel";
 import DrawdownPanel from "./components/DrawdownPanel";
 import DividendChart from "./components/DividendChart";
+import DividendTab from "./components/DividendTab";
 import { fetchDividendMap } from "./lib/financials";
 import {
   usd,
@@ -294,6 +295,13 @@ const TABS = [
   { key: "us", label: "미국" },
   { key: "kr", label: "한국" },
   { key: "sim", label: "시뮬레이션" },
+  { key: "div", label: "배당" },
+];
+
+const ALL_SUBS = [
+  { key: "all", label: "전체" },
+  { key: "us", label: "미국" },
+  { key: "kr", label: "한국" },
 ];
 
 export default function Page() {
@@ -301,6 +309,7 @@ export default function Page() {
   const [updatedAt, setUpdatedAt] = useState(null);
   const [status, setStatus] = useState("loading");
   const [tab, setTab] = useState("all");
+  const [allSub, setAllSub] = useState("all");
   const [usBroker, setUsBroker] = useState("M");
   const [krBroker, setKrBroker] = useState("M");
   const [qtyMap, setQtyMap] = useState({});
@@ -487,17 +496,48 @@ export default function Page() {
 
           {tab === "all" && (
             <>
-              <BuySumBar
-                primary={krw(grandBuyKrw)}
-                secondary={fxRate ? `≈ ${usd(grandBuyKrw / fxRate)}` : null}
-                breakdown={`미국 ${allUsBuy != null ? usd(allUsBuy) : "-"}${allUsBuy != null && fxRate ? ` (${krw(allUsBuy * fxRate)})` : ""} · 한국 ${allKrBuy != null ? krw(allKrBuy) : "-"}`}
-              />
+              <div className="subtabs">
+                {ALL_SUBS.map((s) => (
+                  <button key={s.key} className={s.key === allSub ? "active" : ""} onClick={() => setAllSub(s.key)}>
+                    {s.label}
+                  </button>
+                ))}
+              </div>
 
-              <div className="section-title">미국 주식 · 보유 합산 (동일 종목 통합)</div>
-              <HoldingGrid holdings={usAll} quotes={quotes} fxRate={fxRate} ctx="all-us" qtyMap={qtyMap} setQty={setQty} onOpen={openChart} onRemove={removeCustom} />
+              {allSub === "all" && (
+                <BuySumBar
+                  primary={krw(grandBuyKrw)}
+                  secondary={fxRate ? `≈ ${usd(grandBuyKrw / fxRate)}` : null}
+                  breakdown={`미국 ${allUsBuy != null ? usd(allUsBuy) : "-"}${allUsBuy != null && fxRate ? ` (${krw(allUsBuy * fxRate)})` : ""} · 한국 ${allKrBuy != null ? krw(allKrBuy) : "-"}`}
+                />
+              )}
+              {allSub === "us" && (
+                <BuySumBar
+                  primary={allUsBuy != null ? usd(allUsBuy) : "-"}
+                  secondary={allUsBuy != null && fxRate ? `· ${krw(allUsBuy * fxRate)}` : null}
+                  breakdown="모든 계좌의 미국 주식 통합"
+                />
+              )}
+              {allSub === "kr" && (
+                <BuySumBar
+                  primary={allKrBuy != null ? krw(allKrBuy) : "-"}
+                  secondary={allKrBuy != null && fxRate ? `≈ ${usd(allKrBuy / fxRate)}` : null}
+                  breakdown="모든 계좌의 한국 주식 통합"
+                />
+              )}
 
-              <div className="section-title">한국 주식 · 보유 합산 (동일 종목 통합)</div>
-              <HoldingGrid holdings={krAll} quotes={quotes} fxRate={fxRate} ctx="all-kr" qtyMap={qtyMap} setQty={setQty} onOpen={openChart} onRemove={removeCustom} />
+              {(allSub === "all" || allSub === "us") && (
+                <>
+                  <div className="section-title">미국 주식 · 전 계좌 통합</div>
+                  <HoldingGrid holdings={usAll} quotes={quotes} fxRate={fxRate} ctx="all-us" qtyMap={qtyMap} setQty={setQty} onOpen={openChart} onRemove={removeCustom} />
+                </>
+              )}
+              {(allSub === "all" || allSub === "kr") && (
+                <>
+                  <div className="section-title">한국 주식 · 전 계좌 통합</div>
+                  <HoldingGrid holdings={krAll} quotes={quotes} fxRate={fxRate} ctx="all-kr" qtyMap={qtyMap} setQty={setQty} onOpen={openChart} onRemove={removeCustom} />
+                </>
+              )}
             </>
           )}
 
@@ -570,12 +610,26 @@ export default function Page() {
             />
           )}
 
-          <DividendChart holdings={allHoldings} fxRate={fxRate} dividends={dividendMap} />
+          {tab === "div" && (
+            <DividendTab
+              simItems={simItems}
+              options={simOptions}
+              dividends={dividendMap}
+              fxRate={fxRate}
+              addItem={addSimItem}
+              updateItem={updateSimItem}
+              removeItem={removeSimItem}
+            />
+          )}
+
+          {tab !== "div" && (
+            <DividendChart holdings={allHoldings} fxRate={fxRate} dividends={dividendMap} />
+          )}
 
           <div className="footer-note">
             데이터: Yahoo Finance 공개 엔드포인트 (API 키 불필요) · 가격 라이브, 보유 수량은 입력 데이터 기준 · 평가금액 = 선택 수량 × 현재가.
             <br />
-            카드를 클릭하면 상단 차트가 해당 종목으로 전환됩니다 (캔들·이동평균·볼린저밴드·RSI·손익계산서). 배당·재무는 mock 데이터이며 실시간 시세·환율과 함께 표시됩니다. (USD↔₩ 환산은 실시간 원·달러 환율 적용)
+            카드를 클릭하면 상단 차트가 해당 종목으로 전환됩니다 (캔들·이동평균·볼린저밴드·RSI·손익계산서). 손익·배당·영업이익률은 Yahoo 실데이터(일부 미커버 종목은 자동 폴백). (USD↔₩ 환산은 실시간 원·달러 환율 적용)
           </div>
         </div>
 

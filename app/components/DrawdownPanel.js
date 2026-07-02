@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { fetchQuarterlyMargins } from "../lib/financials";
+import { fetchMarginInfo } from "../lib/financials";
 import { usd, krw, pct, pct1, dirClass } from "../lib/format";
 
 // 시장별 하락 순위 계산: 52주 최고점 대비 하락폭 큰 순 TOP 10
@@ -26,9 +26,9 @@ const TABS = [
   { key: "us", label: "미국 TOP 10" },
 ];
 
-function MarginCell({ m }) {
-  if (!m || typeof m.opMargin !== "number") return <span className="dd-c-q flat">-</span>;
-  return <span className={`dd-c-q ${dirClass(m.opMargin)}`}>{pct1(m.opMargin)}</span>;
+function OpCell({ v }) {
+  if (typeof v !== "number") return <span className="dd-c-q flat">-</span>;
+  return <span className={`dd-c-q ${dirClass(v)}`}>{pct1(v)}</span>;
 }
 
 export default function DrawdownPanel({ holdings, quotes }) {
@@ -38,8 +38,8 @@ export default function DrawdownPanel({ holdings, quotes }) {
   const usRows = useMemo(() => rankByDrawdown(holdings, quotes, "us"), [holdings, quotes]);
   const rows = tab === "kr" ? krRows : usRows;
 
-  // 분기 영업이익률 fetch (mock 레이어). 표시 종목 티커가 바뀔 때만 조회.
-  const [margins, setMargins] = useState({}); // key: `${market}:${ticker}` -> [{q,opMargin}]
+  // 영업이익률 요약 fetch (최근분기·25/12·26E). 표시 종목이 바뀔 때만 조회.
+  const [margins, setMargins] = useState({}); // key -> {recentQ, fy2025, fy2026E}
   const tickerKey = rows.map((r) => `${r.market}:${r.ticker}`).join(",");
   useEffect(() => {
     let alive = true;
@@ -47,7 +47,7 @@ export default function DrawdownPanel({ holdings, quotes }) {
       const entries = await Promise.all(
         rows.map(async (r) => {
           const key = `${r.market}:${r.ticker}`;
-          const data = await fetchQuarterlyMargins(r.market, r.ticker);
+          const data = await fetchMarginInfo(r.market, r.ticker);
           return [key, data];
         })
       );
@@ -68,7 +68,7 @@ export default function DrawdownPanel({ holdings, quotes }) {
     <aside className="side-col">
       <div className="dd-panel">
         <div className="dd-title">보유종목 하락 TOP 10</div>
-        <div className="dd-sub">52주 최고점 대비 하락폭 기준 · 최근 3분기 영업이익률</div>
+        <div className="dd-sub">52주 최고점 대비 하락폭 기준 · 영업이익률(최근분기 · 25/12 · 26년 예상)</div>
 
         <div className="dd-tabs">
           {TABS.map((t) => (
@@ -89,8 +89,8 @@ export default function DrawdownPanel({ holdings, quotes }) {
                 <span className="dd-c-pct">최고점비</span>
                 <span className="dd-c-pct">전일비</span>
                 <span className="dd-c-q">최근분기</span>
-                <span className="dd-c-q">-1분기</span>
-                <span className="dd-c-q">-2분기</span>
+                <span className="dd-c-q">25/12</span>
+                <span className="dd-c-q">26E</span>
               </div>
               {rows.map((r, i) => {
                 const mg = margins[`${r.market}:${r.ticker}`];
@@ -106,9 +106,9 @@ export default function DrawdownPanel({ holdings, quotes }) {
                     <span className="dd-c-price">{r.market === "kr" ? krw(r.price) : usd(r.price)}</span>
                     <span className={`dd-c-pct ${dirClass(r.dd)}`}>{pct(r.dd)}</span>
                     <span className={`dd-c-pct ${dirClass(r.dayPct)}`}>{pct(r.dayPct)}</span>
-                    <MarginCell m={mg?.[0]} />
-                    <MarginCell m={mg?.[1]} />
-                    <MarginCell m={mg?.[2]} />
+                    <OpCell v={mg?.recentQ} />
+                    <OpCell v={mg?.fy2025} />
+                    <OpCell v={mg?.fy2026E} />
                   </div>
                 );
               })}

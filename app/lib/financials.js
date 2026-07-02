@@ -57,6 +57,33 @@ export async function fetchQuarterlyMargins(market, ticker) {
   return Array.isArray(m) && m.length ? m.slice(0, 3) : null;
 }
 
+// 하락 TOP10 표시용 영업이익률 요약: { recentQ, recentQLabel, fy2025, fy2026E }
+// - recentQ: 최근 분기 영업이익률
+// - fy2025: 손익계산서 2025 연간 영업이익률
+// - fy2026E: 2026년 실적 분기 평균(YTD), 없으면 최근 분기값 (실데이터 기반 추정)
+const avg = (arr) => (arr.length ? Math.round((arr.reduce((s, v) => s + v, 0) / arr.length) * 10) / 10 : null);
+export async function fetchMarginInfo(market, ticker) {
+  const data = await getFinancials(yahooSymbol(market, ticker));
+  let quarters = data?.ok && Array.isArray(data.quarters) ? data.quarters : null;
+  let annual = data?.ok && Array.isArray(data.annual) ? data.annual : null;
+  // 폴백(mock)
+  if (!quarters || !quarters.length) {
+    const m = quarterlyMock[ticker];
+    quarters = Array.isArray(m) ? m : [];
+  }
+  if (!annual || !annual.length) {
+    const im = incomeMock[ticker];
+    annual = im && Array.isArray(im.annual) ? im.annual : [];
+  }
+  const recentQ = quarters[0] && typeof quarters[0].opMargin === "number" ? quarters[0].opMargin : null;
+  const recentQLabel = quarters[0]?.q ?? null;
+  const y2025 = annual.find((a) => (a.period || "").startsWith("2025"));
+  const fy2025 = y2025 && typeof y2025.opMargin === "number" ? y2025.opMargin : null;
+  const q2026 = quarters.filter((q) => (q.q || "").startsWith("2026") && typeof q.opMargin === "number").map((q) => q.opMargin);
+  const fy2026E = q2026.length ? avg(q2026) : recentQ;
+  return { recentQ, recentQLabel, fy2025, fy2026E };
+}
+
 // ── 배당 (여러 심볼 배치) ──
 // yahooSymbols: ["AAPL","005930.KS",...] → { [yahoo]: { perShare, months, currency } }
 export async function fetchDividendMap(yahooSymbols) {
