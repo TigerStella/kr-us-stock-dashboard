@@ -14,6 +14,7 @@ import SimulationPanel from "./components/SimulationPanel";
 import DrawdownPanel from "./components/DrawdownPanel";
 import DividendChart from "./components/DividendChart";
 import DividendTab from "./components/DividendTab";
+import PasteHoldings from "./components/PasteHoldings";
 import { fetchDividendMap } from "./lib/financials";
 import {
   usd,
@@ -243,12 +244,15 @@ function AddTicker({ market, onAdd, label = "+ 종목 추가" }) {
 }
 
 // ── 직접 추가 종목 섹션 (미국/한국 탭) ──
-function CustomSection({ market, holdings, quotes, fxRate, qtyMap, setQty, onOpen, onAdd, onRemove }) {
+function CustomSection({ market, holdings, quotes, fxRate, qtyMap, setQty, onOpen, onAdd, onRemove, known, onApplyPaste }) {
   return (
     <>
       <div className="section-title-row">
         <div className="section-title">직접 추가 종목</div>
-        <AddTicker market={market} onAdd={onAdd} />
+        <div className="section-actions">
+          <PasteHoldings market={market} known={known} onApply={onApplyPaste} />
+          <AddTicker market={market} onAdd={onAdd} />
+        </div>
       </div>
       {holdings.length ? (
         <HoldingGrid
@@ -423,17 +427,37 @@ export default function Page() {
   const openChart = (h) => setSelectedChartYahoo(h.yahoo);
 
   // 직접 추가 / 삭제
-  const addCustom = (market, rawTicker) => {
+  const addCustom = (market, rawTicker, shares = 1) => {
     let t = rawTicker.trim();
     if (!t) return;
     if (market === "us") t = t.toUpperCase();
     const dupCustom = customHoldings[market].some((h) => h.ticker === t);
     const dupHeld = (market === "us" ? usMerged : krMerged).some((h) => h.ticker === t);
     if (dupCustom || dupHeld) return; // 이미 있는 종목이면 무시
-    setCustomHoldings((c) => ({ ...c, [market]: [...c[market], { ticker: t, shares: 1 }] }));
+    setCustomHoldings((c) => ({ ...c, [market]: [...c[market], { ticker: t, shares: shares > 0 ? shares : 1 }] }));
   };
   const removeCustom = (h) => {
     setCustomHoldings((c) => ({ ...c, [h.market]: c[h.market].filter((x) => x.ticker !== h.ticker) }));
+  };
+
+  // 붙여넣기(매수문자/현황)로 인식한 수량 적용
+  const applyPasted = (market, entries) => {
+    const broker = market === "us" ? usBroker : krBroker;
+    const heldSet = new Set((market === "us" ? usMerged : krMerged).map((h) => h.ticker));
+    const acctSet = new Set((market === "us" ? usAccount : krAccount).map((h) => h.ticker));
+    const customSet = new Set(customHoldings[market].map((h) => h.ticker));
+    for (const e of entries) {
+      const t = market === "us" ? e.ticker.toUpperCase() : e.ticker;
+      if (heldSet.has(t)) {
+        setQty(`all-${market}:${t}`, e.qty); // 전체 탭 반영
+        if (acctSet.has(t)) setQty(`${market}-${broker}:${t}`, e.qty); // 현재 계좌 탭 반영
+      } else if (customSet.has(t)) {
+        setQty(`all-${market}:${t}`, e.qty);
+        setQty(`custom-${market}:${t}`, e.qty);
+      } else {
+        addCustom(market, t, e.qty); // 신규 → 직접 추가
+      }
+    }
   };
 
   // 시뮬레이션 행 추가/수정/삭제
@@ -565,6 +589,8 @@ export default function Page() {
                 onOpen={openChart}
                 onAdd={(t) => addCustom("us", t)}
                 onRemove={removeCustom}
+                known={usAll.map((h) => ({ ticker: h.ticker, name: h.name }))}
+                onApplyPaste={(entries) => applyPasted("us", entries)}
               />
             </>
           )}
@@ -593,6 +619,8 @@ export default function Page() {
                 onOpen={openChart}
                 onAdd={(t) => addCustom("kr", t)}
                 onRemove={removeCustom}
+                known={krAll.map((h) => ({ ticker: h.ticker, name: h.name }))}
+                onApplyPaste={(entries) => applyPasted("kr", entries)}
               />
             </>
           )}
