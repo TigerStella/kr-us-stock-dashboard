@@ -71,6 +71,16 @@ export const KR_PORTFOLIOS = {
     { name: "KODEX 테슬라커버드콜채권혼합액티브", ticker: "475080", shares: 171 },
     { name: "ACE 엔비디아밸류체인액티브", ticker: "483320", shares: 196 },
   ],
+  M_IRP: [
+    { name: "KODEX 미국S&P500", ticker: "379800", shares: 98 },
+    { name: "KODEX 미국나스닥100", ticker: "379810", shares: 144 },
+    { name: "KODEX 미국반도체", ticker: "390390", shares: 53 },
+    { name: "ACE 미국배당다우존스", ticker: "402970", shares: 223 },
+    { name: "RISE TDF2050액티브 적격", ticker: "442570", shares: 20 },
+    { name: "ACE 엔비디아채권혼합", ticker: "448540", shares: 32 },
+    { name: "KODEX 인도Nifty50", ticker: "453810", shares: 51 },
+    { name: "KODEX 테슬라커버드콜채권혼합액티브", ticker: "475080", shares: 100 },
+  ],
   K_ISA: [
     { name: "SK하이닉스", ticker: "000660", shares: 4 },
     { name: "삼성전자우", ticker: "005935", shares: 5 },
@@ -125,8 +135,8 @@ export const MARKETS = {
     label: "한국",
     currency: "KRW",
     portfolios: KR_PORTFOLIOS,
-    brokers: ["M", "K_ISA", "K_신"],
-    brokerLabel: { M: "M 계좌", K_ISA: "K · ISA", K_신: "K · 신탁" },
+    brokers: ["M", "M_IRP", "K_ISA", "K_신"],
+    brokerLabel: { M: "M 계좌", M_IRP: "M · IRP", K_ISA: "K · ISA", K_신: "K · 신탁" },
   },
 };
 
