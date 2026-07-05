@@ -14,7 +14,6 @@ import SimulationPanel from "./components/SimulationPanel";
 import DrawdownPanel from "./components/DrawdownPanel";
 import DividendChart from "./components/DividendChart";
 import DividendTab from "./components/DividendTab";
-import PasteHoldings from "./components/PasteHoldings";
 import SortableGrid from "./components/SortableGrid";
 import BuyLogTab from "./components/BuyLogTab";
 import { fetchDividendMap } from "./lib/financials";
@@ -263,13 +262,12 @@ function AddTicker({ market, onAdd, label = "+ 종목 추가" }) {
 }
 
 // ── 직접 추가 종목 섹션 (미국/한국 탭) ──
-function CustomSection({ market, holdings, quotes, fxRate, qtyMap, setQty, onOpen, onAdd, onRemove, known, onApplyPaste, dividends, cardOrder, onReorder, onSwipeDelete }) {
+function CustomSection({ market, holdings, quotes, fxRate, qtyMap, setQty, onOpen, onAdd, onRemove, dividends, cardOrder, onReorder, onSwipeDelete }) {
   return (
     <>
       <div className="section-title-row">
         <div className="section-title">직접 추가 종목</div>
         <div className="section-actions">
-          <PasteHoldings market={market} known={known} onApply={onApplyPaste} />
           <AddTicker market={market} onAdd={onAdd} />
         </div>
       </div>
@@ -534,49 +532,47 @@ export default function Page() {
   const removeLog = (id) => setBuyLog((l) => l.filter((x) => x.id !== id));
   const clearLog = () => setBuyLog([]);
 
-  // 붙여넣기(매수내역/현황)로 인식한 수량 적용. mode: "add"(매수추가·누적·로그) | "set"(현황 덮어쓰기)
-  const applyPasted = (market, entries, mode = "add") => {
-    const broker = market === "us" ? usBroker : krBroker;
-    const acctList = market === "us" ? usAccount : krAccount;
-    const mergedList = market === "us" ? usMerged : krMerged;
-    const heldSet = new Set(mergedList.map((h) => h.ticker));
-    const acctSet = new Set(acctList.map((h) => h.ticker));
-    const customSet = new Set(customHoldings[market].map((h) => h.ticker));
-    const baseAcct = (t) => acctList.find((h) => h.ticker === t)?.shares ?? 0;
-    const baseMerged = (t) => mergedList.find((h) => h.ticker === t)?.shares ?? 0;
-    const baseCustom = (t) => customHoldings[market].find((h) => h.ticker === t)?.shares ?? 0;
-    const logs = [];
-    const today = new Date().toISOString().slice(0, 10);
+  // 매수일지 계좌·종목 목록 (입력 폼용)
+  const logAccounts = useMemo(() => ({
+    us: MARKETS.us.brokers.map((b) => ({ key: b, label: MARKETS.us.brokerLabel[b] })),
+    kr: MARKETS.kr.brokers.map((b) => ({ key: b, label: MARKETS.kr.brokerLabel[b] })),
+  }), []);
+  const logKnown = useMemo(() => ({
+    us: usAll.map((h) => ({ ticker: h.ticker, name: h.name })),
+    kr: krAll.map((h) => ({ ticker: h.ticker, name: h.name })),
+  }), [usAll, krAll]);
 
-    for (const e of entries) {
-      const t = market === "us" ? e.ticker.toUpperCase() : e.ticker;
-      const allCtx = `all-${market}:${t}`;
-      const accCtx = `${market}-${broker}:${t}`;
-      if (heldSet.has(t)) {
-        if (mode === "add") {
-          setQty(allCtx, (qtyMap[allCtx] ?? baseMerged(t)) + e.qty);
-          if (acctSet.has(t)) setQty(accCtx, (qtyMap[accCtx] ?? baseAcct(t)) + e.qty);
-        } else {
-          setQty(allCtx, e.qty);
-          if (acctSet.has(t)) setQty(accCtx, e.qty);
-        }
-      } else if (customSet.has(t)) {
-        const cCtx = `custom-${market}:${t}`;
-        if (mode === "add") {
-          setQty(cCtx, (qtyMap[cCtx] ?? baseCustom(t)) + e.qty);
-          setQty(allCtx, (qtyMap[allCtx] ?? baseCustom(t)) + e.qty);
-        } else {
-          setQty(cCtx, e.qty);
-          setQty(allCtx, e.qty);
-        }
-      } else {
-        addCustom(market, t, e.qty);
-      }
-      if (mode === "add") {
-        logs.push({ id: ++logSeq.current, date: today, account: MARKETS[market].brokerLabel[broker], market, ticker: t, name: e.name, shares: e.qty, amount: e.amount ?? null });
-      }
+  // 매수/매도 1건 반영: 해당 계좌 수량 +(매수)/−(매도), 매수일지 기록
+  const addLogEntry = ({ market, broker, ticker, name, side, shares, amount }) => {
+    const t = market === "us" ? String(ticker).toUpperCase() : String(ticker);
+    const delta = side === "sell" ? -shares : shares;
+    const mergedList = market === "us" ? usMerged : krMerged;
+    const acctHoldings = brokerHoldings(market, broker); // 선택 계좌 보유
+    const inAcct = acctHoldings.find((h) => h.ticker === t);
+    const inMerged = mergedList.find((h) => h.ticker === t);
+    const inCustom = customHoldings[market].find((h) => h.ticker === t);
+    const clamp = (v) => Math.max(0, v);
+    const accCtx = `${market}-${broker}:${t}`;
+    const allCtx = `all-${market}:${t}`;
+
+    if (inAcct) {
+      setQty(accCtx, clamp((qtyMap[accCtx] ?? inAcct.shares) + delta));
+      setQty(allCtx, clamp((qtyMap[allCtx] ?? (inMerged?.shares ?? 0)) + delta));
+    } else if (inMerged) {
+      setQty(allCtx, clamp((qtyMap[allCtx] ?? inMerged.shares) + delta)); // 다른 계좌 보유 → 전체만 반영
+    } else if (inCustom) {
+      const cCtx = `custom-${market}:${t}`;
+      setQty(cCtx, clamp((qtyMap[cCtx] ?? inCustom.shares) + delta));
+      setQty(allCtx, clamp((qtyMap[allCtx] ?? inCustom.shares) + delta));
+    } else if (delta > 0) {
+      addCustom(market, t, delta); // 신규 매수 → 직접 추가
     }
-    if (logs.length) setBuyLog((prev) => [...logs, ...prev]);
+
+    const resolvedName = (inAcct || inMerged || inCustom)?.name || name || t;
+    setBuyLog((prev) => [
+      { id: ++logSeq.current, date: new Date().toISOString().slice(0, 10), market, broker, account: MARKETS[market].brokerLabel[broker] ?? broker, ticker: t, name: resolvedName, side, shares, amount: amount ?? null },
+      ...prev,
+    ]);
   };
 
   // 시뮬레이션 행 추가/수정/삭제
@@ -710,8 +706,6 @@ export default function Page() {
                 onOpen={openChart}
                 onAdd={(t) => addCustom("us", t)}
                 onRemove={removeCustom}
-                known={usAll.map((h) => ({ ticker: h.ticker, name: h.name }))}
-                onApplyPaste={(entries, mode) => applyPasted("us", entries, mode)}
                 dividends={dividendMap}
                 cardOrder={cardOrder}
                 onReorder={reorderCards}
@@ -744,8 +738,6 @@ export default function Page() {
                 onOpen={openChart}
                 onAdd={(t) => addCustom("kr", t)}
                 onRemove={removeCustom}
-                known={krAll.map((h) => ({ ticker: h.ticker, name: h.name }))}
-                onApplyPaste={(entries, mode) => applyPasted("kr", entries, mode)}
                 dividends={dividendMap}
                 cardOrder={cardOrder}
                 onReorder={reorderCards}
@@ -780,7 +772,14 @@ export default function Page() {
           )}
 
           {tab === "log" && (
-            <BuyLogTab log={buyLog} onRemoveEntry={removeLog} onClear={clearLog} />
+            <BuyLogTab
+              log={buyLog}
+              onAddEntry={addLogEntry}
+              onRemoveEntry={removeLog}
+              onClear={clearLog}
+              accounts={logAccounts}
+              known={logKnown}
+            />
           )}
 
           {tab !== "div" && tab !== "log" && (
