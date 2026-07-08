@@ -2,26 +2,23 @@
 
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
-// 카드 그리드: 꾹 눌러(롱프레스) 순서 이동 + 왼쪽으로 밀어(스와이프) 삭제.
-// 모바일 대응: 네이티브 touch 리스너(passive:false)로 스크롤 제어. 드래그 중 touch-action:none.
-export default function SortableGrid({ items, onReorder, onSwipeDelete, renderItem }) {
+// 카드 그리드: 꾹 눌러(롱프레스) 순서 이동. (삭제는 카드의 X 버튼으로)
+// 모바일 대응: 네이티브 touch 리스너(passive:false)로 드래그 중 스크롤 차단.
+export default function SortableGrid({ items, onReorder, renderItem }) {
   const [list, setList] = useState(items);
   const [dragging, setDragging] = useState(null); // 표시용
-  const [swipe, setSwipe] = useState({ ticker: null, px: 0 }); // 표시용
 
   const listRef = useRef(items);
   const containerRef = useRef(null);
-  const itemsRef = useRef(items);
-  const cbRef = useRef({ onReorder, onSwipeDelete });
+  const cbRef = useRef({ onReorder });
 
   const startRef = useRef(null); // {x,y,ticker}
-  const modeRef = useRef("none"); // none|drag|swipe|scroll
+  const modeRef = useRef("none"); // none|drag|scroll
   const dragRef = useRef(null);
-  const swipeDxRef = useRef(0);
   const lpTimer = useRef(null);
   const justMoved = useRef(false);
 
-  useLayoutEffect(() => { itemsRef.current = items; cbRef.current = { onReorder, onSwipeDelete }; });
+  useLayoutEffect(() => { cbRef.current = { onReorder }; });
   useEffect(() => { if (modeRef.current === "none") { listRef.current = items; setList(items); } }, [items]);
 
   const clearLP = () => { if (lpTimer.current) { clearTimeout(lpTimer.current); lpTimer.current = null; } };
@@ -42,12 +39,10 @@ export default function SortableGrid({ items, onReorder, onSwipeDelete, renderIt
   const begin = (x, y, target) => {
     const item = target && target.closest ? target.closest("[data-ticker]") : null;
     if (!item) return;
-    // 수량 셀렉트/버튼 위에서 시작하면 제스처 시작 안 함
     if (target.closest && target.closest(".card-top-right, .qtybox, button, select, input")) return;
     const ticker = item.getAttribute("data-ticker");
     startRef.current = { x, y, ticker };
     modeRef.current = "none";
-    swipeDxRef.current = 0;
     clearLP();
     lpTimer.current = setTimeout(() => {
       if (modeRef.current === "none" && startRef.current) {
@@ -71,52 +66,28 @@ export default function SortableGrid({ items, onReorder, onSwipeDelete, renderIt
       if (over && over !== dragRef.current) reorder(dragRef.current, over);
       return;
     }
-    if (modeRef.current === "swipe") {
-      if (ev && ev.cancelable) ev.preventDefault();
-      swipeDxRef.current = Math.max(Math.min(dx, 0), -160);
-      setSwipe({ ticker: s.ticker, px: swipeDxRef.current });
-      return;
-    }
     if (modeRef.current === "none") {
       if (Math.abs(dx) > 10 || Math.abs(dy) > 10) {
         clearLP();
-        if (dx < 0 && Math.abs(dx) > Math.abs(dy) + 4) {
-          modeRef.current = "swipe";
-          if (ev && ev.cancelable) ev.preventDefault();
-          swipeDxRef.current = Math.max(dx, -160);
-          setSwipe({ ticker: s.ticker, px: swipeDxRef.current });
-        } else {
-          modeRef.current = "scroll"; // 세로 스크롤은 브라우저에 양보
-          startRef.current = null;
-        }
+        modeRef.current = "scroll"; // 롱프레스 전 움직임 → 스크롤로 양보
+        startRef.current = null;
       }
     }
   };
 
   const end = () => {
     clearLP();
-    if (modeRef.current === "drag" || modeRef.current === "swipe") {
+    if (modeRef.current === "drag") {
       justMoved.current = true;
       setTimeout(() => { justMoved.current = false; }, 350);
-    }
-    if (modeRef.current === "drag") {
       cbRef.current.onReorder(listRef.current.map((x) => x.ticker));
-    } else if (modeRef.current === "swipe") {
-      if (swipeDxRef.current < -80) {
-        const t = startRef.current && startRef.current.ticker;
-        const h = itemsRef.current.find((x) => x.ticker === t);
-        if (h) cbRef.current.onSwipeDelete(h);
-      }
-      setSwipe({ ticker: null, px: 0 });
     }
     dragRef.current = null;
     setDragging(null);
     modeRef.current = "none";
     startRef.current = null;
-    swipeDxRef.current = 0;
   };
 
-  // 네이티브 리스너 (touchmove를 passive:false로 등록해야 preventDefault 가능)
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
@@ -156,9 +127,7 @@ export default function SortableGrid({ items, onReorder, onSwipeDelete, renderIt
           key={h.ticker}
           data-ticker={h.ticker}
           className={`sortable-item${dragging === h.ticker ? " dragging" : ""}`}
-          style={{ transform: swipe.ticker === h.ticker ? `translateX(${swipe.px}px)` : undefined }}
         >
-          {swipe.ticker === h.ticker && swipe.px < -20 ? <div className="swipe-del">← 삭제</div> : null}
           {renderItem(h)}
         </div>
       ))}

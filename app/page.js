@@ -206,7 +206,7 @@ function HoldingCard({ holding, quote, fxRate, qtyVal, onQty, onOpen, onRemove, 
           <div className="spark-wrap">
             <Sparkline data={q.spark} positive={q.change >= 0} />
           </div>
-          <div className="card-hint">클릭 → 차트 · 꾹 눌러 이동 · ← 밀어 삭제</div>
+          <div className="card-hint">클릭 → 차트 · 꾹 눌러 이동 · ✕ 삭제</div>
         </>
       ) : (
         <div className="nodata">
@@ -262,7 +262,7 @@ function AddTicker({ market, onAdd, label = "+ 종목 추가" }) {
 }
 
 // ── 직접 추가 종목 섹션 (미국/한국 탭) ──
-function CustomSection({ market, holdings, quotes, fxRate, qtyMap, setQty, onOpen, onAdd, onRemove, dividends, cardOrder, onReorder, onSwipeDelete }) {
+function CustomSection({ market, holdings, quotes, fxRate, qtyMap, setQty, onOpen, onAdd, onDelete, dividends, cardOrder, onReorder }) {
   return (
     <>
       <div className="section-title-row">
@@ -280,11 +280,10 @@ function CustomSection({ market, holdings, quotes, fxRate, qtyMap, setQty, onOpe
           qtyMap={qtyMap}
           setQty={setQty}
           onOpen={onOpen}
-          onRemove={onRemove}
+          onDelete={onDelete}
           dividends={dividends}
           cardOrder={cardOrder}
           onReorder={onReorder}
-          onSwipeDelete={onSwipeDelete}
         />
       ) : (
         <div className="empty-note">+ 종목 추가 버튼을 눌러 티커를 입력하면 카드가 생성됩니다. (전체 탭에도 반영됩니다)</div>
@@ -307,7 +306,7 @@ function applyOrder(list, order) {
     .map((x) => x.h);
 }
 
-function HoldingGrid({ holdings, quotes, fxRate, ctx, qtyMap, setQty, onOpen, onRemove, dividends, cardOrder, onReorder, onSwipeDelete, hidden }) {
+function HoldingGrid({ holdings, quotes, fxRate, ctx, qtyMap, setQty, onOpen, onDelete, dividends, cardOrder, onReorder, hidden }) {
   const visible = hidden ? holdings.filter((h) => !hidden.has(h.ticker)) : holdings;
   const order = cardOrder ? cardOrder[ctx] : null;
   const ordered = applyOrder(visible, order);
@@ -322,7 +321,7 @@ function HoldingGrid({ holdings, quotes, fxRate, ctx, qtyMap, setQty, onOpen, on
         qtyVal={qtyMap[key]}
         onQty={(v) => setQty(key, v)}
         onOpen={onOpen}
-        onRemove={onRemove && h.custom ? () => onRemove(h) : undefined}
+        onRemove={onDelete ? () => onDelete(h) : undefined}
         dividend={dividends ? dividends[h.yahoo] : null}
       />
     );
@@ -335,7 +334,6 @@ function HoldingGrid({ holdings, quotes, fxRate, ctx, qtyMap, setQty, onOpen, on
     <SortableGrid
       items={ordered}
       onReorder={(tickers) => onReorder(ctx, tickers)}
-      onSwipeDelete={onSwipeDelete}
       renderItem={renderItem}
     />
   );
@@ -519,9 +517,10 @@ export default function Page() {
     setCustomHoldings((c) => ({ ...c, [h.market]: c[h.market].filter((x) => x.ticker !== h.ticker) }));
   };
 
-  // 카드 순서 이동 / 스와이프 삭제(숨김)
+  // 카드 순서 이동 / X 버튼 삭제(보유는 숨김, 직접추가는 제거)
   const reorderCards = (ctx, tickers) => setCardOrder((o) => ({ ...o, [ctx]: tickers }));
-  const swipeDelete = (h) => {
+  const deleteCard = (h) => {
+    if (typeof window !== "undefined" && !window.confirm(`'${h.name}' 카드를 삭제할까요?`)) return;
     if (h.custom) { removeCustom(h); return; }
     setHidden((hd) => ({ ...hd, [h.market]: hd[h.market].includes(h.ticker) ? hd[h.market] : [...hd[h.market], h.ticker] }));
   };
@@ -668,14 +667,14 @@ export default function Page() {
               {(allSub === "all" || allSub === "us") && (
                 <>
                   <div className="section-title">미국 주식 · 전 계좌 통합</div>
-                  <HoldingGrid holdings={usAll} quotes={quotes} fxRate={fxRate} ctx="all-us" qtyMap={qtyMap} setQty={setQty} onOpen={openChart} onRemove={removeCustom} dividends={dividendMap} cardOrder={cardOrder} onReorder={reorderCards} onSwipeDelete={swipeDelete} hidden={hiddenSet.us} />
+                  <HoldingGrid holdings={usAll} quotes={quotes} fxRate={fxRate} ctx="all-us" qtyMap={qtyMap} setQty={setQty} onOpen={openChart} onDelete={deleteCard} dividends={dividendMap} cardOrder={cardOrder} onReorder={reorderCards} hidden={hiddenSet.us} />
                   {hidden.us.length ? <button className="restore-hidden" onClick={() => restoreHidden("us")}>숨긴 미국 종목 {hidden.us.length}개 복원</button> : null}
                 </>
               )}
               {(allSub === "all" || allSub === "kr") && (
                 <>
                   <div className="section-title">한국 주식 · 전 계좌 통합</div>
-                  <HoldingGrid holdings={krAll} quotes={quotes} fxRate={fxRate} ctx="all-kr" qtyMap={qtyMap} setQty={setQty} onOpen={openChart} onRemove={removeCustom} dividends={dividendMap} cardOrder={cardOrder} onReorder={reorderCards} onSwipeDelete={swipeDelete} hidden={hiddenSet.kr} />
+                  <HoldingGrid holdings={krAll} quotes={quotes} fxRate={fxRate} ctx="all-kr" qtyMap={qtyMap} setQty={setQty} onOpen={openChart} onDelete={deleteCard} dividends={dividendMap} cardOrder={cardOrder} onReorder={reorderCards} hidden={hiddenSet.kr} />
                   {hidden.kr.length ? <button className="restore-hidden" onClick={() => restoreHidden("kr")}>숨긴 한국 종목 {hidden.kr.length}개 복원</button> : null}
                 </>
               )}
@@ -695,7 +694,7 @@ export default function Page() {
                 primary={usAcctBuy != null ? usd(usAcctBuy) : "-"}
                 secondary={usAcctBuy != null && fxRate ? `· ${krw(usAcctBuy * fxRate)}` : null}
               />
-              <HoldingGrid holdings={usAccount} quotes={quotes} fxRate={fxRate} ctx={`us-${usBroker}`} qtyMap={qtyMap} setQty={setQty} onOpen={openChart} dividends={dividendMap} cardOrder={cardOrder} onReorder={reorderCards} onSwipeDelete={swipeDelete} hidden={hiddenSet.us} />
+              <HoldingGrid holdings={usAccount} quotes={quotes} fxRate={fxRate} ctx={`us-${usBroker}`} qtyMap={qtyMap} setQty={setQty} onOpen={openChart} onDelete={deleteCard} dividends={dividendMap} cardOrder={cardOrder} onReorder={reorderCards} hidden={hiddenSet.us} />
               <CustomSection
                 market="us"
                 holdings={customUs}
@@ -705,11 +704,10 @@ export default function Page() {
                 setQty={setQty}
                 onOpen={openChart}
                 onAdd={(t) => addCustom("us", t)}
-                onRemove={removeCustom}
+                onDelete={deleteCard}
                 dividends={dividendMap}
                 cardOrder={cardOrder}
                 onReorder={reorderCards}
-                onSwipeDelete={swipeDelete}
               />
             </>
           )}
@@ -727,7 +725,7 @@ export default function Page() {
                 primary={krAcctBuy != null ? krw(krAcctBuy) : "-"}
                 secondary={krAcctBuy != null && fxRate ? `≈ ${usd(krAcctBuy / fxRate)}` : null}
               />
-              <HoldingGrid holdings={krAccount} quotes={quotes} fxRate={fxRate} ctx={`kr-${krBroker}`} qtyMap={qtyMap} setQty={setQty} onOpen={openChart} dividends={dividendMap} cardOrder={cardOrder} onReorder={reorderCards} onSwipeDelete={swipeDelete} hidden={hiddenSet.kr} />
+              <HoldingGrid holdings={krAccount} quotes={quotes} fxRate={fxRate} ctx={`kr-${krBroker}`} qtyMap={qtyMap} setQty={setQty} onOpen={openChart} onDelete={deleteCard} dividends={dividendMap} cardOrder={cardOrder} onReorder={reorderCards} hidden={hiddenSet.kr} />
               <CustomSection
                 market="kr"
                 holdings={customKr}
@@ -737,11 +735,10 @@ export default function Page() {
                 setQty={setQty}
                 onOpen={openChart}
                 onAdd={(t) => addCustom("kr", t)}
-                onRemove={removeCustom}
+                onDelete={deleteCard}
                 dividends={dividendMap}
                 cardOrder={cardOrder}
                 onReorder={reorderCards}
-                onSwipeDelete={swipeDelete}
               />
             </>
           )}

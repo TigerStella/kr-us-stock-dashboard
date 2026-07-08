@@ -1671,6 +1671,18 @@ body {
 }
 .sim-toggle button.active.buy { background: var(--up); border-color: var(--up); }
 .sim-toggle button.active.sell { background: var(--down); border-color: var(--down); }
+.ef-total {
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--accent);
+  padding: 4px 0;
+}
+.ef-total .ef-total-sub {
+  font-size: 11.5px;
+  font-weight: 400;
+  color: var(--muted);
+  margin-left: 4px;
+}
 
 /* ── 종목 검색 콤보박스 ── */
 .stocksearch { position: relative; }
@@ -1750,4 +1762,7 @@ body {
 }
 @media (max-width: 380px) {
   .grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 560px) {
+  .cardx { padding: 5px 9px; font-size: 13px; } /* 모바일 X 버튼 탭 영역 확대 */
 }

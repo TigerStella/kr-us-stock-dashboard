@@ -14,15 +14,18 @@ function EntryForm({ accounts, known, onSubmit, onClose }) {
   const [stock, setStock] = useState(null); // {ticker,name}
   const [side, setSide] = useState("buy");
   const [shares, setShares] = useState("");
-  const [amount, setAmount] = useState("");
+  const [unit, setUnit] = useState(""); // 1주당 단가
+
+  const shNum = parseFloat(shares);
+  const unitNum = parseFloat(unit);
+  const total = Number.isFinite(shNum) && shNum > 0 && Number.isFinite(unitNum) && unitNum >= 0 ? shNum * unitNum : null;
+  const fmtMoney = (v) => (v == null ? "-" : market === "us" ? usd(v) : krw(v));
 
   const switchMarket = (m) => { setMarket(m); setBroker(accounts[m]?.[0]?.key || ""); setStock(null); };
 
   const submit = () => {
-    const sh = parseFloat(shares);
-    if (!stock || !Number.isFinite(sh) || sh <= 0) return;
-    const amt = amount === "" ? null : Math.max(0, parseFloat(amount) || 0);
-    onSubmit({ market, broker: brokerValid, ticker: stock.ticker, name: stock.name, side, shares: sh, amount: amt });
+    if (!stock || !(shNum > 0)) return;
+    onSubmit({ market, broker: brokerValid, ticker: stock.ticker, name: stock.name, side, shares: shNum, amount: total });
     onClose();
   };
 
@@ -56,15 +59,18 @@ function EntryForm({ accounts, known, onSubmit, onClose }) {
           </div>
 
           <label>수량(주)</label>
-          <input className="ef-select" type="number" step="any" min="0" value={shares} placeholder="예: 3" onChange={(e) => setShares(e.target.value)} />
+          <input className="ef-select" type="number" step="any" min="0" value={shares} placeholder="매수/매도 갯수" onChange={(e) => setShares(e.target.value)} />
 
-          <label>금액(원/$)</label>
-          <input className="ef-select" type="number" step="any" min="0" value={amount} placeholder="총 매수/매도 금액" onChange={(e) => setAmount(e.target.value)} />
+          <label>1주당 단가</label>
+          <input className="ef-select" type="number" step="any" min="0" value={unit} placeholder={market === "us" ? "1주당 가격($)" : "1주당 가격(원)"} onChange={(e) => setUnit(e.target.value)} />
+
+          <label>합계</label>
+          <div className="ef-total">{fmtMoney(total)}<span className="ef-total-sub">{total != null ? ` (${shFmt(shNum)}주 × ${fmtMoney(unitNum)})` : ""}</span></div>
         </div>
 
         <div className="paste-footer">
           <button className="addform-cancel" onClick={onClose}>취소</button>
-          <button className="addform-ok" onClick={submit} disabled={!stock || !(parseFloat(shares) > 0)}>저장</button>
+          <button className="addform-ok" onClick={submit} disabled={!stock || !(shNum > 0)}>저장</button>
         </div>
         <div className="footer-note" style={{ marginTop: 8 }}>
           저장하면 해당 계좌 보유 수량이 {side === "buy" ? "더해지고" : "차감되고"} 아래 일지에 기록됩니다.
@@ -204,7 +210,7 @@ export default function BuyLogTab({ log, onAddEntry, onRemoveEntry, onClear, acc
               <div className="le-sub">
                 <span className="le-date">{r.date}</span>
                 <span className="le-acct">{r.account}</span>
-                <span className="le-qty">{shFmt(r.shares)}주</span>
+                <span className="le-qty">{shFmt(r.shares)}주{r.amount != null && r.shares ? ` × ${money(r.amount / r.shares, r.market)}` : ""}</span>
                 <span className="le-amt">{money(r.amount, r.market)}</span>
               </div>
             </div>
