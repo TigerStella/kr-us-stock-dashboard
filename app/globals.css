@@ -1456,6 +1456,59 @@ body {
   width: 100%;
 }
 
+/* ── 계좌 캡쳐 업로드 ── */
+.acct-toolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 6px 0 12px;
+}
+.acct-toolbar-note {
+  font-size: 11.5px;
+  color: var(--muted);
+}
+.acct-tag {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--accent);
+  border: 1px solid var(--border-bright);
+  border-radius: 6px;
+  padding: 2px 8px;
+  margin-left: 6px;
+}
+.upload-drop {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+.upload-hint {
+  font-size: 11.5px;
+  color: var(--muted);
+  flex: 1;
+  min-width: 180px;
+  line-height: 1.5;
+}
+.ocr-bar {
+  margin-top: 10px;
+  height: 6px;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.ocr-bar-in {
+  height: 100%;
+  background: var(--accent);
+  transition: width 0.2s ease;
+}
+.upl-table .paste-head,
+.upl-table .paste-row {
+  grid-template-columns: 28px 1fr 96px 56px;
+}
+
 /* ── 카드: 배당 표시 ── */
 .card-div {
   display: flex;

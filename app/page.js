@@ -16,6 +16,7 @@ import DividendChart from "./components/DividendChart";
 import DividendTab from "./components/DividendTab";
 import SortableGrid from "./components/SortableGrid";
 import BuyLogTab from "./components/BuyLogTab";
+import AccountUpload from "./components/AccountUpload";
 import { fetchDividendMap } from "./lib/financials";
 import {
   usd,
@@ -43,12 +44,36 @@ function qtyOptions(held) {
 function decorate(list, market) {
   return list.map((h) => ({ ...h, market, yahoo: yahooSymbol(market, h.ticker) }));
 }
-// 직접 추가 종목: 종목명은 라이브 시세(meta)에서 채움, 없으면 티커.
+// 직접 추가 종목: 종목명은 입력값 → 라이브 시세(meta) → 티커 순.
 function decorateCustom(list, market, quotes) {
   return list.map((h) => {
     const yahoo = yahooSymbol(market, h.ticker);
-    return { ...h, market, yahoo, custom: true, name: quotes[yahoo]?.name || h.ticker };
+    return { ...h, market, yahoo, custom: true, name: h.name || quotes[yahoo]?.name || h.ticker };
   });
+}
+// 계좌별 직접 추가 종목: 어느 계좌 소속인지(acctKey) 부착.
+function decorateAcctCustom(list, market, broker, quotes) {
+  return list.map((h) => {
+    const yahoo = yahooSymbol(market, h.ticker);
+    return { ...h, market, yahoo, custom: true, acctKey: `${market}-${broker}`, name: h.name || quotes[yahoo]?.name || h.ticker };
+  });
+}
+// 시장 전체(전 계좌 통합)에 붙일 직접추가 종목 집합: 시장단위 + 계좌단위 커스텀 합집합(티커 기준, 정적보유 제외).
+function gatherMarketCustom(market, customHoldings, acctCustom, excludeTickers) {
+  const map = new Map();
+  const add = (h) => {
+    const t = h.ticker;
+    if (!t || (excludeTickers && excludeTickers.has(t))) return;
+    const cur = map.get(t);
+    if (cur) { cur.shares += h.shares || 0; if (!cur.name && h.name) cur.name = h.name; }
+    else map.set(t, { ticker: t, name: h.name, shares: h.shares || 0 });
+  };
+  for (const h of customHoldings[market] || []) add(h);
+  for (const [key, list] of Object.entries(acctCustom || {})) {
+    if (!key.startsWith(market + "-")) continue;
+    for (const h of list) add(h);
+  }
+  return Array.from(map.values());
 }
 // 선택 수량(드롭다운) 기준 매수금액 합계 (해당 시장 통화). 수량 변경 시 즉시 반영.
 function buySum(holdings, ctx, quotes, qtyMap) {
@@ -365,6 +390,7 @@ export default function Page() {
   const [qtyMap, setQtyMap] = useState({});
   const [selectedChartYahoo, setSelectedChartYahoo] = useState(null);
   const [customHoldings, setCustomHoldings] = useState({ us: [], kr: [] });
+  const [acctCustom, setAcctCustom] = useState({}); // `${market}-${broker}` -> [{ticker,name,shares}]
   const [simItems, setSimItems] = useState([]);
   const [cardOrder, setCardOrder] = useState({}); // ctx -> [ticker]
   const [hidden, setHidden] = useState({ us: [], kr: [] }); // 스와이프 삭제(숨김)
@@ -382,6 +408,8 @@ export default function Page() {
         const parsed = JSON.parse(ch);
         if (parsed && Array.isArray(parsed.us) && Array.isArray(parsed.kr)) setCustomHoldings(parsed);
       }
+      const ac = localStorage.getItem("ksd:acctCustom");
+      if (ac) { const p = JSON.parse(ac); if (p && typeof p === "object" && !Array.isArray(p)) setAcctCustom(p); }
       const si = localStorage.getItem("ksd:simItems");
       if (si) {
         const parsed = JSON.parse(si);
@@ -413,6 +441,10 @@ export default function Page() {
   }, [customHoldings, hydrated]);
   useEffect(() => {
     if (!hydrated) return;
+    try { localStorage.setItem("ksd:acctCustom", JSON.stringify(acctCustom)); } catch (e) {}
+  }, [acctCustom, hydrated]);
+  useEffect(() => {
+    if (!hydrated) return;
     try { localStorage.setItem("ksd:simItems", JSON.stringify(simItems)); } catch (e) {}
   }, [simItems, hydrated]);
   useEffect(() => {
@@ -438,8 +470,12 @@ export default function Page() {
     for (const m of ["us", "kr"]) {
       for (const h of customHoldings[m]) s.add(yahooSymbol(m, h.ticker));
     }
+    for (const [key, list] of Object.entries(acctCustom)) {
+      const m = key.startsWith("us-") ? "us" : "kr";
+      for (const h of list) s.add(yahooSymbol(m, h.ticker));
+    }
     return Array.from(s);
-  }, [customHoldings]);
+  }, [customHoldings, acctCustom]);
 
   const load = useCallback(async () => {
     try {
@@ -463,15 +499,31 @@ export default function Page() {
   const fxRate = quotes["KRW=X"]?.ok ? quotes["KRW=X"].price : null;
   const usMerged = useMemo(() => decorate(mergeMarket("us"), "us"), []);
   const krMerged = useMemo(() => decorate(mergeMarket("kr"), "kr"), []);
-  const usAccount = useMemo(() => decorate(brokerHoldings("us", usBroker), "us"), [usBroker]);
-  const krAccount = useMemo(() => decorate(brokerHoldings("kr", krBroker), "kr"), [krBroker]);
+  // 계좌 탭: 정적 보유 + 그 계좌에 직접추가/업로드된 종목(중복 티커 제외)
+  const usAccount = useMemo(() => {
+    const base = brokerHoldings("us", usBroker);
+    const set = new Set(base.map((h) => h.ticker));
+    const extra = (acctCustom[`us-${usBroker}`] || []).filter((h) => !set.has(h.ticker));
+    return [...decorate(base, "us"), ...decorateAcctCustom(extra, "us", usBroker, quotes)];
+  }, [usBroker, acctCustom, quotes]);
+  const krAccount = useMemo(() => {
+    const base = brokerHoldings("kr", krBroker);
+    const set = new Set(base.map((h) => h.ticker));
+    const extra = (acctCustom[`kr-${krBroker}`] || []).filter((h) => !set.has(h.ticker));
+    return [...decorate(base, "kr"), ...decorateAcctCustom(extra, "kr", krBroker, quotes)];
+  }, [krBroker, acctCustom, quotes]);
 
+  // "직접 추가 종목" 섹션(시장단위) — 계좌 업로드분은 제외
   const customUs = useMemo(() => decorateCustom(customHoldings.us, "us", quotes), [customHoldings.us, quotes]);
   const customKr = useMemo(() => decorateCustom(customHoldings.kr, "kr", quotes), [customHoldings.kr, quotes]);
 
-  // 전체 탭 / 드롭다운 / 하락 TOP에 쓰이는 합산 목록 (보유 + 직접 추가)
-  const usAll = useMemo(() => [...usMerged, ...customUs], [usMerged, customUs]);
-  const krAll = useMemo(() => [...krMerged, ...customKr], [krMerged, customKr]);
+  // 전체 탭 / 드롭다운 / 하락 TOP에 쓰이는 합산 목록 (보유 + 시장단위·계좌단위 직접추가 전부)
+  const usMergedSet = useMemo(() => new Set(usMerged.map((h) => h.ticker)), [usMerged]);
+  const krMergedSet = useMemo(() => new Set(krMerged.map((h) => h.ticker)), [krMerged]);
+  const usAllCustom = useMemo(() => decorateCustom(gatherMarketCustom("us", customHoldings, acctCustom, usMergedSet), "us", quotes), [customHoldings, acctCustom, usMergedSet, quotes]);
+  const krAllCustom = useMemo(() => decorateCustom(gatherMarketCustom("kr", customHoldings, acctCustom, krMergedSet), "kr", quotes), [customHoldings, acctCustom, krMergedSet, quotes]);
+  const usAll = useMemo(() => [...usMerged, ...usAllCustom], [usMerged, usAllCustom]);
+  const krAll = useMemo(() => [...krMerged, ...krAllCustom], [krMerged, krAllCustom]);
   const allHoldings = useMemo(() => [...usAll, ...krAll], [usAll, krAll]);
 
   const simOptions = useMemo(() => ({ us: usAll, kr: krAll }), [usAll, krAll]);
@@ -516,12 +568,53 @@ export default function Page() {
   const removeCustom = (h) => {
     setCustomHoldings((c) => ({ ...c, [h.market]: c[h.market].filter((x) => x.ticker !== h.ticker) }));
   };
+  const removeAcctCustom = (market, key, ticker) => {
+    setAcctCustom((c) => ({ ...c, [key]: (c[key] || []).filter((x) => x.ticker !== ticker) }));
+  };
+  const removeAcctCustomAllAccounts = (market, ticker) => {
+    setAcctCustom((c) => {
+      const next = { ...c };
+      for (const k of Object.keys(next)) {
+        if (k.startsWith(market + "-")) next[k] = next[k].filter((x) => x.ticker !== ticker);
+      }
+      return next;
+    });
+  };
+
+  // 계좌별 캡쳐 업로드 결과 반영: 그 계좌에 카드 생성 + 수량 설정
+  const applyAcctHoldings = (market, broker, rows) => {
+    const key = `${market}-${broker}`;
+    const staticSet = new Set(brokerHoldings(market, broker).map((h) => h.ticker));
+    const norm = (t) => (market === "us" ? String(t).toUpperCase() : String(t));
+    setAcctCustom((prev) => {
+      const byT = new Map((prev[key] || []).map((h) => [h.ticker, h]));
+      for (const r of rows) {
+        const t = norm(r.ticker);
+        if (staticSet.has(t)) continue; // 이미 정적 보유 → 카드 존재, 수량만 아래서 설정
+        byT.set(t, { ticker: t, name: r.name || undefined, shares: r.qty > 0 ? r.qty : 1 });
+      }
+      return { ...prev, [key]: Array.from(byT.values()) };
+    });
+    setQtyMap((prev) => {
+      const next = { ...prev };
+      for (const r of rows) {
+        if (!(r.qty > 0)) continue;
+        next[`${market}-${broker}:${norm(r.ticker)}`] = r.qty;
+      }
+      return next;
+    });
+  };
 
   // 카드 순서 이동 / X 버튼 삭제(보유는 숨김, 직접추가는 제거)
   const reorderCards = (ctx, tickers) => setCardOrder((o) => ({ ...o, [ctx]: tickers }));
   const deleteCard = (h) => {
     if (typeof window !== "undefined" && !window.confirm(`'${h.name}' 카드를 삭제할까요?`)) return;
-    if (h.custom) { removeCustom(h); return; }
+    if (h.acctKey) { removeAcctCustom(h.market, h.acctKey, h.ticker); return; } // 계좌 탭의 업로드 카드
+    if (h.custom) {
+      if (customHoldings[h.market].some((x) => x.ticker === h.ticker)) { removeCustom(h); return; }
+      removeAcctCustomAllAccounts(h.market, h.ticker); // 전체탭에서 본 계좌 업로드 카드 → 전 계좌에서 제거
+      return;
+    }
     setHidden((hd) => ({ ...hd, [h.market]: hd[h.market].includes(h.ticker) ? hd[h.market] : [...hd[h.market], h.ticker] }));
   };
   const restoreHidden = (market) => setHidden((hd) => ({ ...hd, [market]: [] }));
@@ -541,33 +634,32 @@ export default function Page() {
     kr: krAll.map((h) => ({ ticker: h.ticker, name: h.name })),
   }), [usAll, krAll]);
 
-  // 매수/매도 1건 반영: 해당 계좌 수량 +(매수)/−(매도), 매수일지 기록
+  // 매수/매도 1건 반영: 선택 계좌 수량 +(매수)/−(매도) + 전체 통합 반영 + 계좌 탭에 카드 자동 생성, 매수일지 기록
   const addLogEntry = ({ market, broker, ticker, name, side, shares, amount }) => {
     const t = market === "us" ? String(ticker).toUpperCase() : String(ticker);
     const delta = side === "sell" ? -shares : shares;
-    const mergedList = market === "us" ? usMerged : krMerged;
-    const acctHoldings = brokerHoldings(market, broker); // 선택 계좌 보유
-    const inAcct = acctHoldings.find((h) => h.ticker === t);
-    const inMerged = mergedList.find((h) => h.ticker === t);
-    const inCustom = customHoldings[market].find((h) => h.ticker === t);
     const clamp = (v) => Math.max(0, v);
+    const mergedList = market === "us" ? usMerged : krMerged;
+    const key = `${market}-${broker}`;
+    const staticAcct = brokerHoldings(market, broker).find((h) => h.ticker === t); // 정적 계좌 보유
+    const inAcctCustom = (acctCustom[key] || []).find((h) => h.ticker === t); // 계좌 업로드/추가분
+    const inMerged = mergedList.find((h) => h.ticker === t);
+    const inMarketCustom = customHoldings[market].find((h) => h.ticker === t);
     const accCtx = `${market}-${broker}:${t}`;
     const allCtx = `all-${market}:${t}`;
+    const acctBase = staticAcct?.shares ?? inAcctCustom?.shares ?? 0;
+    const allBase = inMerged?.shares ?? inMarketCustom?.shares ?? inAcctCustom?.shares ?? 0;
 
-    if (inAcct) {
-      setQty(accCtx, clamp((qtyMap[accCtx] ?? inAcct.shares) + delta));
-      setQty(allCtx, clamp((qtyMap[allCtx] ?? (inMerged?.shares ?? 0)) + delta));
-    } else if (inMerged) {
-      setQty(allCtx, clamp((qtyMap[allCtx] ?? inMerged.shares) + delta)); // 다른 계좌 보유 → 전체만 반영
-    } else if (inCustom) {
-      const cCtx = `custom-${market}:${t}`;
-      setQty(cCtx, clamp((qtyMap[cCtx] ?? inCustom.shares) + delta));
-      setQty(allCtx, clamp((qtyMap[allCtx] ?? inCustom.shares) + delta));
-    } else if (delta > 0) {
-      addCustom(market, t, delta); // 신규 매수 → 직접 추가
+    // 선택 계좌 수량 반영 + 전체 통합 반영
+    setQty(accCtx, clamp((qtyMap[accCtx] ?? acctBase) + delta));
+    setQty(allCtx, clamp((qtyMap[allCtx] ?? allBase) + delta));
+
+    // 해당 계좌 탭에 카드가 없으면 생성(신규 매수) → 요청1: 각 계좌 탭 자동반영
+    if (!staticAcct && !inAcctCustom && delta > 0) {
+      setAcctCustom((prev) => ({ ...prev, [key]: [...(prev[key] || []), { ticker: t, name: name || undefined, shares: delta }] }));
     }
 
-    const resolvedName = (inAcct || inMerged || inCustom)?.name || name || t;
+    const resolvedName = (staticAcct || inMerged || inAcctCustom || inMarketCustom)?.name || name || t;
     setBuyLog((prev) => [
       { id: ++logSeq.current, date: new Date().toISOString().slice(0, 10), market, broker, account: MARKETS[market].brokerLabel[broker] ?? broker, ticker: t, name: resolvedName, side, shares, amount: amount ?? null },
       ...prev,
@@ -694,6 +786,10 @@ export default function Page() {
                 primary={usAcctBuy != null ? usd(usAcctBuy) : "-"}
                 secondary={usAcctBuy != null && fxRate ? `· ${krw(usAcctBuy * fxRate)}` : null}
               />
+              <div className="acct-toolbar">
+                <AccountUpload market="us" broker={usBroker} brokerLabel={MARKETS.us.brokerLabel[usBroker]} known={logKnown.us} onApply={applyAcctHoldings} />
+                <span className="acct-toolbar-note">캡쳐를 올리면 이 계좌({MARKETS.us.brokerLabel[usBroker]})에 카드가 생성됩니다.</span>
+              </div>
               <HoldingGrid holdings={usAccount} quotes={quotes} fxRate={fxRate} ctx={`us-${usBroker}`} qtyMap={qtyMap} setQty={setQty} onOpen={openChart} onDelete={deleteCard} dividends={dividendMap} cardOrder={cardOrder} onReorder={reorderCards} hidden={hiddenSet.us} />
               <CustomSection
                 market="us"
@@ -725,6 +821,10 @@ export default function Page() {
                 primary={krAcctBuy != null ? krw(krAcctBuy) : "-"}
                 secondary={krAcctBuy != null && fxRate ? `≈ ${usd(krAcctBuy / fxRate)}` : null}
               />
+              <div className="acct-toolbar">
+                <AccountUpload market="kr" broker={krBroker} brokerLabel={MARKETS.kr.brokerLabel[krBroker]} known={logKnown.kr} onApply={applyAcctHoldings} />
+                <span className="acct-toolbar-note">캡쳐를 올리면 이 계좌({MARKETS.kr.brokerLabel[krBroker]})에 카드가 생성됩니다.</span>
+              </div>
               <HoldingGrid holdings={krAccount} quotes={quotes} fxRate={fxRate} ctx={`kr-${krBroker}`} qtyMap={qtyMap} setQty={setQty} onOpen={openChart} onDelete={deleteCard} dividends={dividendMap} cardOrder={cardOrder} onReorder={reorderCards} hidden={hiddenSet.kr} />
               <CustomSection
                 market="kr"
