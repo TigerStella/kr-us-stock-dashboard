@@ -60,7 +60,8 @@ export const KR_PORTFOLIOS = {
     { name: "KODEX 미국나스닥100", ticker: "379810", shares: 6 },
   ],
   M_IRP: [
-    { name: "KODEX 미국S&P500", ticker: "379800", shares: 98 },
+    { name: "KODEX 반도체", ticker: "091160", shares: 11 },
+    { name: "KODEX 미국S&P500", ticker: "379800", shares: 100 },
     { name: "KODEX 미국나스닥100", ticker: "379810", shares: 144 },
     { name: "KODEX 미국반도체", ticker: "390390", shares: 53 },
     { name: "ACE 미국배당다우존스", ticker: "402970", shares: 223 },
