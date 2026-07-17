@@ -211,6 +211,105 @@ body {
   font-weight: 700;
 }
 
+/* ── 펀드 계좌(표 형식) ── */
+.fund-wrap {
+  margin-top: 12px;
+}
+.fund-sum {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.fund-sum-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+.fund-sum-label {
+  font-size: 11px;
+  color: var(--muted);
+}
+.fund-sum-main {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--text);
+}
+.fund-sum-sub {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--muted);
+}
+.fund-table-scroll {
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--panel);
+}
+.fund-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  min-width: 520px;
+}
+.fund-table th,
+.fund-table td {
+  padding: 11px 14px;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+.fund-table thead th {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--muted);
+  background: var(--panel-2);
+}
+.fund-table tbody tr:last-child td {
+  border-bottom: none;
+}
+.fund-table .fl {
+  text-align: left;
+}
+.fund-table .fr {
+  text-align: right;
+}
+.fund-table .fund-name {
+  white-space: normal;
+  font-weight: 700;
+  color: var(--text);
+  min-width: 180px;
+}
+.fund-table td.strong {
+  font-weight: 800;
+}
+.fund-table .up,
+.fund-sum-main.up {
+  color: var(--up);
+}
+.fund-table .down,
+.fund-sum-main.down {
+  color: var(--down);
+}
+.fund-table .flat,
+.fund-sum-main.flat {
+  color: var(--flat);
+}
+.fund-note {
+  margin: 10px 4px 0;
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+@media (max-width: 640px) {
+  .fund-sum {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
 /* ── 합계 ── */
 .totals {
   display: flex;

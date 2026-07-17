@@ -8,6 +8,7 @@ import {
   yahooSymbol,
   mergeMarket,
   brokerHoldings,
+  KR_FUND_ACCOUNTS,
 } from "./portfolios";
 import InlineChartPanel from "./components/InlineChartPanel";
 import SimulationPanel from "./components/SimulationPanel";
@@ -17,6 +18,7 @@ import DividendTab from "./components/DividendTab";
 import SortableGrid from "./components/SortableGrid";
 import BuyLogTab from "./components/BuyLogTab";
 import AccountUpload from "./components/AccountUpload";
+import FundTable from "./components/FundTable";
 import { fetchDividendMap } from "./lib/financials";
 import {
   usd,
@@ -512,6 +514,8 @@ export default function Page() {
     const extra = (acctCustom[`kr-${krBroker}`] || []).filter((h) => !set.has(h.ticker));
     return [...decorate(base, "kr"), ...decorateAcctCustom(extra, "kr", krBroker, quotes)];
   }, [krBroker, acctCustom, quotes]);
+  // 선택된 서브탭이 (티커 없는) 펀드 계좌면 표 렌더링으로 분기
+  const krFundAccount = KR_FUND_ACCOUNTS.find((f) => f.key === krBroker) || null;
 
   // "직접 추가 종목" 섹션(시장단위) — 계좌 업로드분은 제외
   const customUs = useMemo(() => decorateCustom(customHoldings.us, "us", quotes), [customHoldings.us, quotes]);
@@ -816,30 +820,41 @@ export default function Page() {
                     {MARKETS.kr.brokerLabel[b]}
                   </button>
                 ))}
+                {KR_FUND_ACCOUNTS.map((f) => (
+                  <button key={f.key} className={f.key === krBroker ? "active" : ""} onClick={() => setKrBroker(f.key)}>
+                    {f.label}
+                  </button>
+                ))}
               </div>
-              <BuySumBar
-                primary={krAcctBuy != null ? krw(krAcctBuy) : "-"}
-                secondary={krAcctBuy != null && fxRate ? `≈ ${usd(krAcctBuy / fxRate)}` : null}
-              />
-              <div className="acct-toolbar">
-                <AccountUpload market="kr" broker={krBroker} brokerLabel={MARKETS.kr.brokerLabel[krBroker]} known={logKnown.kr} onApply={applyAcctHoldings} />
-                <span className="acct-toolbar-note">캡쳐를 올리면 이 계좌({MARKETS.kr.brokerLabel[krBroker]})에 카드가 생성됩니다.</span>
-              </div>
-              <HoldingGrid holdings={krAccount} quotes={quotes} fxRate={fxRate} ctx={`kr-${krBroker}`} qtyMap={qtyMap} setQty={setQty} onOpen={openChart} onDelete={deleteCard} dividends={dividendMap} cardOrder={cardOrder} onReorder={reorderCards} hidden={hiddenSet.kr} />
-              <CustomSection
-                market="kr"
-                holdings={customKr}
-                quotes={quotes}
-                fxRate={fxRate}
-                qtyMap={qtyMap}
-                setQty={setQty}
-                onOpen={openChart}
-                onAdd={(t) => addCustom("kr", t)}
-                onDelete={deleteCard}
-                dividends={dividendMap}
-                cardOrder={cardOrder}
-                onReorder={reorderCards}
-              />
+              {krFundAccount ? (
+                <FundTable account={krFundAccount} />
+              ) : (
+                <>
+                  <BuySumBar
+                    primary={krAcctBuy != null ? krw(krAcctBuy) : "-"}
+                    secondary={krAcctBuy != null && fxRate ? `≈ ${usd(krAcctBuy / fxRate)}` : null}
+                  />
+                  <div className="acct-toolbar">
+                    <AccountUpload market="kr" broker={krBroker} brokerLabel={MARKETS.kr.brokerLabel[krBroker]} known={logKnown.kr} onApply={applyAcctHoldings} />
+                    <span className="acct-toolbar-note">캡쳐를 올리면 이 계좌({MARKETS.kr.brokerLabel[krBroker]})에 카드가 생성됩니다.</span>
+                  </div>
+                  <HoldingGrid holdings={krAccount} quotes={quotes} fxRate={fxRate} ctx={`kr-${krBroker}`} qtyMap={qtyMap} setQty={setQty} onOpen={openChart} onDelete={deleteCard} dividends={dividendMap} cardOrder={cardOrder} onReorder={reorderCards} hidden={hiddenSet.kr} />
+                  <CustomSection
+                    market="kr"
+                    holdings={customKr}
+                    quotes={quotes}
+                    fxRate={fxRate}
+                    qtyMap={qtyMap}
+                    setQty={setQty}
+                    onOpen={openChart}
+                    onAdd={(t) => addCustom("kr", t)}
+                    onDelete={deleteCard}
+                    dividends={dividendMap}
+                    cardOrder={cardOrder}
+                    onReorder={reorderCards}
+                  />
+                </>
+              )}
             </>
           )}
 

@@ -119,6 +119,38 @@ export const KR_PORTFOLIOS = {
   ],
 };
 
+// 비상장 펀드 계좌 (연금저축펀드 등). 뮤추얼펀드라 거래소 티커/실시간가가 없어
+// Yahoo 조회 대상에서 제외하고, 매수·평가 금액만 표로 기록(스크린샷 기준 수동 갱신).
+// MARKETS.brokers 와 분리 → 티커 기반 합산/배당/조회 로직에 영향 없음.
+export const KR_FUND_ACCOUNTS = [
+  {
+    key: "S_연금저축",
+    label: "연금저축펀드 S",
+    note: "비상장 펀드 · 실시간가 미지원 · 스크린샷 기준 수동 갱신",
+    funds: [
+      { name: "신영마라톤주식(C-P)", buy: 6100000, value: 20161815 },
+      { name: "피델리티글로벌배당인컴(PRS)", buy: 5904317, value: 11453850 },
+      { name: "DB해오름개인MMF3(C-P)", buy: 5827226, value: 7003472 },
+      { name: "iM에셋월드골드증[재간접](H)(C-p)", buy: 2320000, value: 5484822 },
+      { name: "한국밸류10년투자배당증권[채권혼합](C-P)", buy: 2706875, value: 4044902 },
+      { name: "삼성달러표시단기채권UH[채권](C-P)", buy: 1380000, value: 1910964 },
+    ],
+  },
+  {
+    key: "S_펀드",
+    label: "펀드-S",
+    note: "비상장 펀드 · 실시간가 미지원 · 스크린샷 기준 수동 갱신",
+    funds: [
+      { name: "iM에셋월드골드증[재간접](H)(C4)", buy: 5190000, value: 10367435 },
+      { name: "신영밸류고배당주식A", buy: 3762392, value: 9258247 },
+      { name: "AB글로벌고수익(A)", buy: 6503303, value: 7749717 },
+      { name: "카디안미국회사채(H)[채권](C-e)", buy: 4390000, value: 4480282 },
+      { name: "피델차이나컨슈머(C-e)", buy: 4650019, value: 3694660 },
+      { name: "미래아시아퍼시픽소비1A", buy: 2821804, value: 3629119 },
+    ],
+  },
+];
+
 // 한국 코드는 전부 .KS 로 조회됨 (검증 완료, 신규상장 0190G0 포함)
 export function yahooSymbol(market, ticker) {
   return market === "kr" ? `${ticker}.KS` : ticker;
@@ -178,9 +210,11 @@ export function mergeMarket(marketKey) {
   return merged;
 }
 
-// 한 계좌 보유 (동일티커 합산)
+// 한 계좌 보유 (동일티커 합산). 펀드 계좌 등 정적 목록이 없는 키는 빈 배열.
 export function brokerHoldings(marketKey, broker) {
-  return mergeByTicker(MARKETS[marketKey].portfolios[broker]);
+  const list = MARKETS[marketKey].portfolios[broker];
+  if (!Array.isArray(list)) return [];
+  return mergeByTicker(list);
 }
 
 // quotes API가 받아올 전 종목 Yahoo 심볼 (미국 + 한국)
