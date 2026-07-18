@@ -54,25 +54,14 @@ export const US_PORTFOLIOS = {
 
 export const KR_PORTFOLIOS = {
   M: [
-    { name: "KODEX 반도체타겟위클리커버드콜", ticker: "0190G0", shares: 50, note: "신규상장(2026.05), 영문숫자 단축코드" },
-    { name: "TIGER 200 중공업", ticker: "139230", shares: 110 },
-    { name: "RISE 200", ticker: "148020", shares: 45 },
-    { name: "TIGER 미국채10년선물", ticker: "305080", shares: 530 },
-    { name: "TIGER 골드선물(H)", ticker: "319640", shares: 47 },
-    { name: "ACE 미국S&P500", ticker: "360200", shares: 420 },
-    { name: "KODEX 미국S&P500", ticker: "379800", shares: 172 },
-    { name: "KODEX 미국나스닥100", ticker: "379810", shares: 324 },
-    { name: "TIGER 미국테크TOP10 INDXX", ticker: "381170", shares: 426 },
-    { name: "KODEX 미국반도체", ticker: "390390", shares: 316 },
-    { name: "TIGER 글로벌리튬&2차전지SOLACTIVE(합성)", ticker: "394670", shares: 310 },
-    { name: "TIGER 반도체TOP10", ticker: "396500", shares: 75 },
-    { name: "ACE 미국배당다우존스", ticker: "402970", shares: 463 },
-    { name: "KODEX 인도Nifty50", ticker: "453810", shares: 272 },
-    { name: "KODEX 테슬라커버드콜채권혼합액티브", ticker: "475080", shares: 171 },
-    { name: "ACE 엔비디아밸류체인액티브", ticker: "483320", shares: 196 },
+    { name: "SK하이닉스", ticker: "000660", shares: 11 },
+    { name: "삼성전자우", ticker: "005935", shares: 5 },
+    { name: "삼성중공업", ticker: "010140", shares: 4 },
+    { name: "KODEX 미국나스닥100", ticker: "379810", shares: 6 },
   ],
   M_IRP: [
-    { name: "KODEX 미국S&P500", ticker: "379800", shares: 98 },
+    { name: "KODEX 반도체", ticker: "091160", shares: 11 },
+    { name: "KODEX 미국S&P500", ticker: "379800", shares: 100 },
     { name: "KODEX 미국나스닥100", ticker: "379810", shares: 144 },
     { name: "KODEX 미국반도체", ticker: "390390", shares: 53 },
     { name: "ACE 미국배당다우존스", ticker: "402970", shares: 223 },
@@ -82,13 +71,7 @@ export const KR_PORTFOLIOS = {
     { name: "KODEX 테슬라커버드콜채권혼합액티브", ticker: "475080", shares: 100 },
   ],
   K_ISA: [
-    { name: "SK하이닉스", ticker: "000660", shares: 4 },
-    { name: "삼성전자우", ticker: "005935", shares: 5 },
-    { name: "삼성중공업", ticker: "010140", shares: 4 },
-    { name: "KODEX 미국나스닥100", ticker: "379810", shares: 4 },
-  ],
-  K_신: [
-    { name: "SK하이닉스", ticker: "000660", shares: 12 },
+    { name: "SK하이닉스", ticker: "000660", shares: 13 },
     { name: "현대차2우B", ticker: "005387", shares: 15 },
     { name: "삼성전자우", ticker: "005935", shares: 101 },
     { name: "NH투자증권", ticker: "005940", shares: 6 },
@@ -99,6 +82,7 @@ export const KR_PORTFOLIOS = {
     { name: "한화오션", ticker: "042660", shares: 15 },
     { name: "리노공업", ticker: "058470", shares: 75 },
     { name: "하나금융지주", ticker: "086790", shares: 49 },
+    { name: "KODEX 반도체", ticker: "091160", shares: 3 },
     { name: "KB금융", ticker: "105560", shares: 22 },
     { name: "TIGER 200 중공업", ticker: "139230", shares: 23 },
     { name: "RISE 200", ticker: "148020", shares: 8 },
@@ -114,7 +98,58 @@ export const KR_PORTFOLIOS = {
     { name: "TIGER 글로벌비만치료제TOP2 Plus", ticker: "476690", shares: 30 },
     { name: "ACE 엔비디아밸류체인액티브", ticker: "483320", shares: 50 },
   ],
+  K_신: [
+    { name: "KODEX 반도체타겟위클리커버드콜", ticker: "0190G0", shares: 67 },
+    { name: "KODEX 반도체", ticker: "091160", shares: 3 },
+    { name: "TIGER 200 중공업", ticker: "139230", shares: 110 },
+    { name: "RISE 200", ticker: "148020", shares: 45 },
+    { name: "TIGER 미국채10년선물", ticker: "305080", shares: 530 },
+    { name: "TIGER 골드선물(H)", ticker: "319640", shares: 47 },
+    { name: "ACE 미국S&P500", ticker: "360200", shares: 420 },
+    { name: "KODEX 미국S&P500", ticker: "379800", shares: 172 },
+    { name: "KODEX 미국나스닥100", ticker: "379810", shares: 324 },
+    { name: "TIGER 미국테크TOP10 INDXX", ticker: "381170", shares: 426 },
+    { name: "KODEX 미국반도체", ticker: "390390", shares: 316 },
+    { name: "TIGER 글로벌리튬&2차전지SOLACTIVE(합성)", ticker: "394670", shares: 310 },
+    { name: "TIGER 반도체TOP10", ticker: "396500", shares: 77 },
+    { name: "ACE 미국배당다우존스", ticker: "402970", shares: 463 },
+    { name: "KODEX 인도Nifty50", ticker: "453810", shares: 272 },
+    { name: "KODEX 테슬라커버드콜채권혼합액티브", ticker: "475080", shares: 171 },
+    { name: "ACE 엔비디아밸류체인액티브", ticker: "483320", shares: 196 },
+  ],
 };
+
+// 비상장 펀드 계좌 (연금저축펀드 등). 뮤추얼펀드라 거래소 티커/실시간가가 없어
+// Yahoo 조회 대상에서 제외하고, 매수·평가 금액만 표로 기록(스크린샷 기준 수동 갱신).
+// MARKETS.brokers 와 분리 → 티커 기반 합산/배당/조회 로직에 영향 없음.
+export const KR_FUND_ACCOUNTS = [
+  {
+    key: "S_연금저축",
+    label: "연금저축펀드 S",
+    note: "비상장 펀드 · 실시간가 미지원 · 스크린샷 기준 수동 갱신",
+    funds: [
+      { name: "신영마라톤주식(C-P)", buy: 6100000, value: 20161815 },
+      { name: "피델리티글로벌배당인컴(PRS)", buy: 5904317, value: 11453850 },
+      { name: "DB해오름개인MMF3(C-P)", buy: 5827226, value: 7003472 },
+      { name: "iM에셋월드골드증[재간접](H)(C-p)", buy: 2320000, value: 5484822 },
+      { name: "한국밸류10년투자배당증권[채권혼합](C-P)", buy: 2706875, value: 4044902 },
+      { name: "삼성달러표시단기채권UH[채권](C-P)", buy: 1380000, value: 1910964 },
+    ],
+  },
+  {
+    key: "S_펀드",
+    label: "펀드-S",
+    note: "비상장 펀드 · 실시간가 미지원 · 스크린샷 기준 수동 갱신",
+    funds: [
+      { name: "iM에셋월드골드증[재간접](H)(C4)", buy: 5190000, value: 10367435 },
+      { name: "신영밸류고배당주식A", buy: 3762392, value: 9258247 },
+      { name: "AB글로벌고수익(A)", buy: 6503303, value: 7749717 },
+      { name: "카디안미국회사채(H)[채권](C-e)", buy: 4390000, value: 4480282 },
+      { name: "피델차이나컨슈머(C-e)", buy: 4650019, value: 3694660 },
+      { name: "미래아시아퍼시픽소비1A", buy: 2821804, value: 3629119 },
+    ],
+  },
+];
 
 // 한국 코드는 전부 .KS 로 조회됨 (검증 완료, 신규상장 0190G0 포함)
 export function yahooSymbol(market, ticker) {
@@ -175,9 +210,11 @@ export function mergeMarket(marketKey) {
   return merged;
 }
 
-// 한 계좌 보유 (동일티커 합산)
+// 한 계좌 보유 (동일티커 합산). 펀드 계좌 등 정적 목록이 없는 키는 빈 배열.
 export function brokerHoldings(marketKey, broker) {
-  return mergeByTicker(MARKETS[marketKey].portfolios[broker]);
+  const list = MARKETS[marketKey].portfolios[broker];
+  if (!Array.isArray(list)) return [];
+  return mergeByTicker(list);
 }
 
 // quotes API가 받아올 전 종목 Yahoo 심볼 (미국 + 한국)
