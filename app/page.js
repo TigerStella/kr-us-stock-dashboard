@@ -19,6 +19,7 @@ import SortableGrid from "./components/SortableGrid";
 import BuyLogTab from "./components/BuyLogTab";
 import AccountUpload from "./components/AccountUpload";
 import FundTable from "./components/FundTable";
+import AccountSelector from "./components/AccountSelector";
 import { fetchDividendMap } from "./lib/financials";
 import {
   usd,
@@ -396,6 +397,7 @@ export default function Page() {
   const [simItems, setSimItems] = useState([]);
   const [cardOrder, setCardOrder] = useState({}); // ctx -> [ticker]
   const [hidden, setHidden] = useState({ us: [], kr: [] }); // 스와이프 삭제(숨김)
+  const [acctSel, setAcctSel] = useState({}); // 전체 탭 계좌 선택. id→false 면 해제(없으면 선택)
   const [buyLog, setBuyLog] = useState([]); // 매수일지
   const [hydrated, setHydrated] = useState(false);
   const simSeq = useRef(0);
@@ -424,6 +426,8 @@ export default function Page() {
       if (co) { const p = JSON.parse(co); if (p && typeof p === "object") setCardOrder(p); }
       const hd = localStorage.getItem("ksd:hidden");
       if (hd) { const p = JSON.parse(hd); if (p && Array.isArray(p.us) && Array.isArray(p.kr)) setHidden(p); }
+      const as = localStorage.getItem("ksd:acctSel");
+      if (as) { const p = JSON.parse(as); if (p && typeof p === "object" && !Array.isArray(p)) setAcctSel(p); }
       const bl = localStorage.getItem("ksd:buyLog");
       if (bl) {
         const p = JSON.parse(bl);
@@ -457,6 +461,10 @@ export default function Page() {
     if (!hydrated) return;
     try { localStorage.setItem("ksd:hidden", JSON.stringify(hidden)); } catch (e) {}
   }, [hidden, hydrated]);
+  useEffect(() => {
+    if (!hydrated) return;
+    try { localStorage.setItem("ksd:acctSel", JSON.stringify(acctSel)); } catch (e) {}
+  }, [acctSel, hydrated]);
   useEffect(() => {
     if (!hydrated) return;
     try { localStorage.setItem("ksd:buyLog", JSON.stringify(buyLog)); } catch (e) {}
@@ -690,6 +698,50 @@ export default function Page() {
   const usAcctBuy = buySum(usAccount, `us-${usBroker}`, quotes, qtyMap); // USD
   const krAcctBuy = buySum(krAccount, `kr-${krBroker}`, quotes, qtyMap); // KRW
 
+  // ── 전체 탭: 계좌 목록 + 계좌별 평가금액(KRW 환산) + 선택 합계 ──
+  const accountList = useMemo(() => {
+    const us = MARKETS.us.brokers.map((b) => ({ id: `us-${b}`, market: "us", broker: b, shortLabel: MARKETS.us.brokerLabel[b] }));
+    const kr = MARKETS.kr.brokers.map((b) => ({ id: `kr-${b}`, market: "kr", broker: b, shortLabel: MARKETS.kr.brokerLabel[b] }));
+    const funds = KR_FUND_ACCOUNTS.map((f) => ({ id: `kr-${f.key}`, market: "kr", fund: f, shortLabel: f.label }));
+    return [...kr, ...funds, ...us];
+  }, []);
+
+  const accountValues = useMemo(() => {
+    const out = {};
+    for (const a of accountList) {
+      if (a.fund) {
+        const v = a.fund.funds.reduce((s, f) => s + (f.value || 0), 0);
+        out[a.id] = { krw: v, native: v, currency: "KRW", ok: true };
+        continue;
+      }
+      const base = brokerHoldings(a.market, a.broker);
+      const set = new Set(base.map((h) => h.ticker));
+      const extra = (acctCustom[`${a.market}-${a.broker}`] || []).filter((h) => !set.has(h.ticker));
+      const holdings = [...decorate(base, a.market), ...decorateAcctCustom(extra, a.market, a.broker, quotes)];
+      const native = buySum(holdings, `${a.market}-${a.broker}`, quotes, qtyMap);
+      const krwVal = native == null ? null : a.market === "us" ? (fxRate ? native * fxRate : null) : native;
+      out[a.id] = { krw: krwVal, native, currency: a.market === "us" ? "USD" : "KRW", ok: native != null };
+    }
+    return out;
+  }, [accountList, acctCustom, quotes, qtyMap, fxRate]);
+
+  const isAcctSelected = useCallback((id) => acctSel[id] !== false, [acctSel]);
+  const toggleAccount = useCallback((id) => setAcctSel((m) => ({ ...m, [id]: m[id] === false })), []);
+  const toggleAllAccounts = useCallback((on) => {
+    setAcctSel(() => {
+      const next = {};
+      for (const a of accountList) next[a.id] = on ? true : false;
+      return next;
+    });
+  }, [accountList]);
+
+  const selectedAcctCount = accountList.reduce((n, a) => n + (isAcctSelected(a.id) ? 1 : 0), 0);
+  const selectedTotalKrw = accountList.reduce((s, a) => {
+    if (!isAcctSelected(a.id)) return s;
+    const v = accountValues[a.id];
+    return s + (v && v.krw != null ? v.krw : 0);
+  }, 0);
+
   return (
     <div className="wrap">
       <div className="topbar">
@@ -730,6 +782,17 @@ export default function Page() {
 
           {tab === "all" && (
             <>
+              <AccountSelector
+                accounts={accountList}
+                values={accountValues}
+                isSelected={isAcctSelected}
+                onToggle={toggleAccount}
+                onToggleAll={toggleAllAccounts}
+                totalKrw={selectedTotalKrw}
+                fxRate={fxRate}
+                selectedCount={selectedAcctCount}
+                totalCount={accountList.length}
+              />
               <div className="subtabs">
                 {ALL_SUBS.map((s) => (
                   <button key={s.key} className={s.key === allSub ? "active" : ""} onClick={() => setAllSub(s.key)}>
