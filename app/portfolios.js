@@ -117,6 +117,9 @@ export const KR_PORTFOLIOS = {
     { name: "KODEX 테슬라커버드콜채권혼합액티브", ticker: "475080", shares: 171 },
     { name: "ACE 엔비디아밸류체인액티브", ticker: "483320", shares: 196 },
   ],
+  S: [
+    // S 계좌 — 보유 종목은 캡쳐 업로드 또는 추후 입력으로 채워집니다.
+  ],
 };
 
 // 비상장 펀드 계좌 (연금저축펀드 등). 뮤추얼펀드라 거래소 티커/실시간가가 없어
@@ -170,8 +173,8 @@ export const MARKETS = {
     label: "한국",
     currency: "KRW",
     portfolios: KR_PORTFOLIOS,
-    brokers: ["M", "M_IRP", "K_ISA", "K_신"],
-    brokerLabel: { M: "M 계좌", M_IRP: "M · IRP", K_ISA: "K · ISA", K_신: "K · 신탁" },
+    brokers: ["M", "M_IRP", "K_ISA", "K_신", "S"],
+    brokerLabel: { M: "M 계좌", M_IRP: "M · IRP", K_ISA: "K · ISA", K_신: "K · 신탁", S: "S 계좌" },
   },
 };
 
