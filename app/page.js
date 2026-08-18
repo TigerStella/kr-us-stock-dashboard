@@ -718,6 +718,10 @@ export default function Page() {
       const set = new Set(base.map((h) => h.ticker));
       const extra = (acctCustom[`${a.market}-${a.broker}`] || []).filter((h) => !set.has(h.ticker));
       const holdings = [...decorate(base, a.market), ...decorateAcctCustom(extra, a.market, a.broker, quotes)];
+      if (holdings.length === 0) {
+        out[a.id] = { krw: 0, native: 0, currency: a.market === "us" ? "USD" : "KRW", ok: true };
+        continue;
+      }
       const native = buySum(holdings, `${a.market}-${a.broker}`, quotes, qtyMap);
       const krwVal = native == null ? null : a.market === "us" ? (fxRate ? native * fxRate : null) : native;
       out[a.id] = { krw: krwVal, native, currency: a.market === "us" ? "USD" : "KRW", ok: native != null };
