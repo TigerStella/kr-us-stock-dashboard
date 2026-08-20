@@ -635,19 +635,36 @@ export default function Page() {
   // 매수일지 삭제/초기화
   const removeLog = (id) => setBuyLog((l) => l.filter((x) => x.id !== id));
   const clearLog = () => setBuyLog([]);
+  // 매수일지 항목 수정(기록만 갱신, 보유수량 재조정 없음)
+  const updateLog = (id, patch) => setBuyLog((l) => l.map((x) => (x.id === id ? { ...x, ...patch } : x)));
+  // 통장간 이체 기록(현금 이동 — 보유수량과 무관)
+  const addTransfer = ({ fromId, fromLabel, toId, toLabel, amount, currency, date, memo }) => {
+    setBuyLog((prev) => [
+      { id: ++logSeq.current, date: date || new Date().toISOString().slice(0, 10), type: "transfer", fromId, fromLabel, toId, toLabel, amount: amount ?? null, currency: currency || "KRW", memo: memo || "" },
+      ...prev,
+    ]);
+  };
 
   // 매수일지 계좌·종목 목록 (입력 폼용)
   const logAccounts = useMemo(() => ({
     us: MARKETS.us.brokers.map((b) => ({ key: b, label: MARKETS.us.brokerLabel[b] })),
     kr: MARKETS.kr.brokers.map((b) => ({ key: b, label: MARKETS.kr.brokerLabel[b] })),
   }), []);
+  // 이체 출금/입금 드롭다운용 — 모든 계좌(양 시장 브로커 + 펀드)
+  const transferAccounts = useMemo(() => {
+    const items = [];
+    for (const b of MARKETS.us.brokers) items.push({ id: `us-${b}`, label: `미국 · ${MARKETS.us.brokerLabel[b]}` });
+    for (const b of MARKETS.kr.brokers) items.push({ id: `kr-${b}`, label: `한국 · ${MARKETS.kr.brokerLabel[b]}` });
+    for (const f of KR_FUND_ACCOUNTS) items.push({ id: `kr-${f.key}`, label: `한국 · ${f.label}` });
+    return items;
+  }, []);
   const logKnown = useMemo(() => ({
     us: usAll.map((h) => ({ ticker: h.ticker, name: h.name })),
     kr: krAll.map((h) => ({ ticker: h.ticker, name: h.name })),
   }), [usAll, krAll]);
 
   // 매수/매도 1건 반영: 선택 계좌 수량 +(매수)/−(매도) + 전체 통합 반영 + 계좌 탭에 카드 자동 생성, 매수일지 기록
-  const addLogEntry = ({ market, broker, ticker, name, side, shares, amount }) => {
+  const addLogEntry = ({ market, broker, ticker, name, side, shares, amount, date }) => {
     const t = market === "us" ? String(ticker).toUpperCase() : String(ticker);
     const delta = side === "sell" ? -shares : shares;
     const clamp = (v) => Math.max(0, v);
@@ -673,7 +690,7 @@ export default function Page() {
 
     const resolvedName = (staticAcct || inMerged || inAcctCustom || inMarketCustom)?.name || name || t;
     setBuyLog((prev) => [
-      { id: ++logSeq.current, date: new Date().toISOString().slice(0, 10), market, broker, account: MARKETS[market].brokerLabel[broker] ?? broker, ticker: t, name: resolvedName, side, shares, amount: amount ?? null },
+      { id: ++logSeq.current, date: date || new Date().toISOString().slice(0, 10), market, broker, account: MARKETS[market].brokerLabel[broker] ?? broker, ticker: t, name: resolvedName, side, shares, amount: amount ?? null },
       ...prev,
     ]);
   };
@@ -947,9 +964,12 @@ export default function Page() {
             <BuyLogTab
               log={buyLog}
               onAddEntry={addLogEntry}
+              onUpdateEntry={updateLog}
+              onAddTransfer={addTransfer}
               onRemoveEntry={removeLog}
               onClear={clearLog}
               accounts={logAccounts}
+              transferAccounts={transferAccounts}
               known={logKnown}
             />
           )}
