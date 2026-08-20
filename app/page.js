@@ -368,12 +368,12 @@ function HoldingGrid({ holdings, quotes, fxRate, ctx, qtyMap, setQty, onOpen, on
 }
 
 const TABS = [
+  { key: "log", label: "매수일지" },
   { key: "all", label: "전체" },
   { key: "us", label: "미국" },
   { key: "kr", label: "한국" },
   { key: "sim", label: "시뮬레이션" },
   { key: "div", label: "배당" },
-  { key: "log", label: "매수일지" },
 ];
 
 const ALL_SUBS = [
@@ -386,7 +386,7 @@ export default function Page() {
   const [quotes, setQuotes] = useState({});
   const [updatedAt, setUpdatedAt] = useState(null);
   const [status, setStatus] = useState("loading");
-  const [tab, setTab] = useState("all");
+  const [tab, setTab] = useState("log");
   const [allSub, setAllSub] = useState("all");
   const [usBroker, setUsBroker] = useState("M");
   const [krBroker, setKrBroker] = useState("M");
@@ -769,13 +769,6 @@ export default function Page() {
 
       <div className="layout">
         <div className="main-col">
-          <InlineChartPanel
-            options={allHoldings}
-            selected={chartSel}
-            onSelect={(h) => setSelectedChartYahoo(h.yahoo)}
-            quotes={quotes}
-          />
-
           <div className="tabs">
             {TABS.map((t) => (
               <button key={t.key} className={t.key === tab ? "active" : ""} onClick={() => setTab(t.key)}>
@@ -965,10 +958,18 @@ export default function Page() {
             <DividendChart holdings={allHoldings} fxRate={fxRate} dividends={dividendMap} />
           )}
 
+          <div className="section-title" style={{ marginTop: 18 }}>종목 차트</div>
+          <InlineChartPanel
+            options={allHoldings}
+            selected={chartSel}
+            onSelect={(h) => setSelectedChartYahoo(h.yahoo)}
+            quotes={quotes}
+          />
+
           <div className="footer-note">
             데이터: Yahoo Finance 공개 엔드포인트 (API 키 불필요) · 가격 라이브, 보유 수량은 입력 데이터 기준 · 평가금액 = 선택 수량 × 현재가.
             <br />
-            카드를 클릭하면 상단 차트가 해당 종목으로 전환됩니다 (캔들·이동평균·볼린저밴드·RSI·손익계산서). 손익·배당·영업이익률은 Yahoo 실데이터(일부 미커버 종목은 자동 폴백). (USD↔₩ 환산은 실시간 원·달러 환율 적용)
+            카드를 클릭하면 아래 종목 차트가 해당 종목으로 전환됩니다 (캔들·이동평균·볼린저밴드·RSI·손익계산서). 손익·배당·영업이익률은 Yahoo 실데이터(일부 미커버 종목은 자동 폴백). (USD↔₩ 환산은 실시간 원·달러 환율 적용)
           </div>
         </div>
 
